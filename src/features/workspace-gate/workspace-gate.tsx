@@ -83,6 +83,13 @@ export function WorkspaceGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
+      const { getDevWorkspaceHandle } =
+        await import('@/infrastructure/storage/dev-workspace-handle')
+      const devHandle = await getDevWorkspaceHandle()
+      if (devHandle) {
+        if (!cancelled) await activate(devHandle)
+        return
+      }
       if (!isFileSystemAccessSupported()) {
         if (!cancelled) setStatus({ kind: 'unavailable' })
         return

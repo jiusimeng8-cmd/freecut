@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { devWorkspacePlugin } from './scripts/dev-workspace-plugin'
 
 // Stamps public/sw.js with the hashed entry-chunk filename at build time so the service
 // worker's CACHE_VERSION — and the sw.js bytes — change on every deploy. Without this the
@@ -94,7 +95,12 @@ export default defineConfig({
       },
     },
   },
-  plugins: lazyPlugins(() => [react(), tailwindcss(), serviceWorkerVersionPlugin()]),
+  plugins: lazyPlugins(() => [
+    react(),
+    tailwindcss(),
+    serviceWorkerVersionPlugin(),
+    devWorkspacePlugin(process.env.FREECUT_DEV_WORKSPACE),
+  ]),
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
