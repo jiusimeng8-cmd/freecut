@@ -64,14 +64,12 @@ import { SharedVideoExtractorPool, type VideoFrameSource } from './shared-video-
 import { getCompositeOperation } from '@/types/blend-mode-css'
 import {
   useCompositionsStore,
-  type SubComposition,
-} from '@/features/export/deps/timeline-compositions'
-import { doesMaskAffectTrack } from '@/shared/utils/mask-scope'
-import type { FrameInvalidationRequest } from '@/shared/utils/frame-invalidation'
-import {
   collectReachableCompositionIdsFromItems,
   collectReachableCompositionIdsFromTracks,
-} from '@/features/export/deps/timeline-compositions'
+} from '@/features/export/deps/timeline-compositions-render'
+import type { SubComposition } from '@/features/export/deps/timeline-compositions-render'
+import { doesMaskAffectTrack } from '@/shared/utils/mask-scope'
+import type { FrameInvalidationRequest } from '@/shared/utils/frame-invalidation'
 
 // Item renderer
 import {
@@ -241,6 +239,16 @@ export async function createCompositionRenderer(
   const domVideoElementProvider = options.domVideoElementProvider
   const hasDom = typeof document !== 'undefined'
   const previewStrictDecode = renderMode === 'preview'
+  const frozenCompositionById = composition.compositions
+    ? Object.fromEntries(
+        composition.compositions.map((nestedComposition) => [
+          nestedComposition.id,
+          nestedComposition as SubComposition,
+        ]),
+      )
+    : null
+  const getCompositionById = (): Record<string, SubComposition> =>
+    frozenCompositionById ?? useCompositionsStore.getState().compositionById
 
   const canvasSettings: CanvasSettings = {
     width: canvas.width,
@@ -677,7 +685,7 @@ export async function createCompositionRenderer(
   // store. Without this, the first renderFrame after creation would fall into
   // the `if (!subData) return;` path in renderCompositionItem and skip all
   // compound clips — producing a black frame until preload() finishes.
-  refreshSubCompRenderData(useCompositionsStore.getState().compositionById)
+  refreshSubCompRenderData(getCompositionById())
 
   const getPrewarmContext = ():
     | OffscreenCanvasRenderingContext2D
@@ -846,11 +854,8 @@ export async function createCompositionRenderer(
       // wrapper item are caught too — otherwise nested Lottie/GIF/WebP (invisible to the
       // top-level media lists) would slip past into the sub-comp preload and export blank.
       const hasCompositionItems =
-        collectReachableCompositionIdsFromTracks(
-          tracks,
-          useCompositionsStore.getState().compositionById,
-        ).length > 0
-      if (!hasDom && hasCompositionItems) {
+        collectReachableCompositionIdsFromTracks(tracks, getCompositionById()).length > 0
+      if (!hasDom && hasCompositionItems && !frozenCompositionById) {
         throw new Error('WORKER_REQUIRES_MAIN_THREAD:composition')
       }
 
@@ -1058,7 +1063,7 @@ export async function createCompositionRenderer(
       const subCompMediaItems: Array<{ subItem: TimelineItem; src: string }> = []
       const pendingResolutions: Array<{ subItem: TimelineItem; mediaId: string }> = []
       const prioritySubCompVideoItemIds = new Set<string>()
-      const compositionById = useCompositionsStore.getState().compositionById
+      const compositionById = getCompositionById()
       // Collect priority video item IDs from all depths of nested compositions
       // whose root-level wrapper falls within the priority scrub window.
       for (const track of tracks) {
@@ -1099,10 +1104,8 @@ export async function createCompositionRenderer(
         if (!subComp) {
           getLog().warn('Sub-composition not found in store!', {
             compositionId,
-            storeCompositionCount: useCompositionsStore.getState().compositions.length,
-            storeCompositionIds: useCompositionsStore
-              .getState()
-              .compositions.map((c) => c.id.substring(0, 8)),
+            storeCompositionCount: Object.keys(compositionById).length,
+            storeCompositionIds: Object.keys(compositionById).map((id) => id.substring(0, 8)),
           })
           continue
         }
@@ -1432,7 +1435,7 @@ export async function createCompositionRenderer(
       // sub-item effects directly from the cached snapshot — without this
       // refresh, effects added after renderer creation stay invisible.
       if (renderMode === 'preview') {
-        refreshSubCompRenderData(useCompositionsStore.getState().compositionById)
+        refreshSubCompRenderData(getCompositionById())
       }
 
       // Rebuild any Lottie whose text/color overrides changed since preload, so

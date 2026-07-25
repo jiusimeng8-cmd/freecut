@@ -16,8 +16,8 @@ const page = {
         {
           kind: 'list',
           items: [
-            'FreeCut runs in your browser and stores everything in a **workspace folder** on your disk.',
-            'Your original video and audio are **linked**, not copied or uploaded — FreeCut points to the files where they already live.',
+            'FreeCut runs as a Web editor or Electron desktop app and stores the project in a **workspace folder** on your disk.',
+            'Your original video and audio are **linked**, not copied into the project. Cloud Agent and ASR features may send only task-selected audio, frames, or proxies to the configured provider.',
             'Projects, caches, generated assets, and exports are written into the workspace, so you can back it up or move it like any folder.',
           ],
         },
@@ -83,14 +83,15 @@ const page = {
       ],
     },
     {
-      title: 'Everything renders on your machine',
+      title: 'Local execution and optional cloud analysis',
       blocks: [
         {
           kind: 'list',
           items: [
-            'Playback, effects, color, and AI tools run locally using your GPU (WebGPU) and CPU (WebCodecs).',
+            'Playback, effects, color, timeline tools, and export run locally using your GPU and CPU.',
+            'The Electron Local Agent executes MCP tools locally; configured cloud providers supply model reasoning, ASR, or multimodal analysis.',
             '**Proxies** are lighter copies of heavy media that make editing smooth; the final export always uses the originals.',
-            'Because there is no cloud render, keeping the tab open during export matters — the render happens right in the browser.',
+            'Export is local, so keep the Web page or desktop app open until rendering finishes.',
           ],
         },
       ],

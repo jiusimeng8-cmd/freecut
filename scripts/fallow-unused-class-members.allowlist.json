@@ -1,6 +1,17 @@
 {
   "unusedClassMembers": [
     {
+      "path": "desktop/services/cloud-bridge-service.ts",
+      "reason": "error-contract: LocalDirectorLoop reads Error.code dynamically to preserve AGENT_TURN_TIMEOUT.",
+      "members": [
+        {
+          "parentName": "CloudBridgeRequestTimeoutError",
+          "memberName": "code",
+          "kind": "class_property"
+        }
+      ]
+    },
+    {
       "path": "src/features/export/utils/canvas-pool.ts",
       "reason": "Audited as a live typed-call surface after the unused-class-members cleanup pass.",
       "members": [
@@ -58,22 +69,6 @@
         {
           "parentName": "VideoFrameExtractor",
           "memberName": "prewarmBatch",
-          "kind": "class_method"
-        }
-      ]
-    },
-    {
-      "path": "src/features/media-library/transcription/browser-transcriber.ts",
-      "reason": "Audited as a live transcription service API reached through adapter instances.",
-      "members": [
-        {
-          "parentName": "BrowserTranscriber",
-          "memberName": "transcribe",
-          "kind": "class_method"
-        },
-        {
-          "parentName": "TranscribeStream",
-          "memberName": "collect",
           "kind": "class_method"
         }
       ]

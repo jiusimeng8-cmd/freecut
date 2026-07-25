@@ -91,6 +91,36 @@ jobs:
           npm install -g fallow
           fallow audit --base "origin/${{ github.base_ref }}" --gate new-only --ci
 
+  desktop-windows:
+    name: Windows Desktop
+    if: github.event_name != 'schedule'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: '22'
+          cache: true
+
+      - name: Install dependencies
+        run: vp install
+
+      - name: Check Desktop
+        run: vp run desktop:check
+
+      - name: Test Desktop
+        run: vp run desktop:test
+
+      - name: Build Renderer
+        run: vp build
+
+      - name: Build Electron Main and Preload
+        run: node scripts/build-desktop.mjs
+
   # Repeatedly re-runs the preview-sync suite from cold to surface ordering /
   # stale-render flakes in the fast-scrub state machine. Kept OFF the common PR
   # critical path: it only runs nightly (full soak) or on PRs that actually

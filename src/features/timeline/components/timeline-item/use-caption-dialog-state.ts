@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { TimelineItem as TimelineItemType } from '@/types/timeline'
 import { useTimelineStore } from '../../stores/timeline-store'
 import { useMediaLibraryStore } from '@/features/timeline/deps/media-library-store'
@@ -24,31 +24,11 @@ interface UseCaptionDialogStateParams {
   linkedItemsForCaptionOwnership: TimelineItemType[]
 }
 
-type TranscriptProgress = NonNullable<
-  ReturnType<typeof useMediaLibraryStore.getState>['transcriptProgress'] extends Map<
-    string,
-    infer V
-  >
-    ? V
-    : never
->
-
 export interface CaptionDialogState {
   canManageCaptions: boolean
   canExtractEmbeddedSubtitles: boolean
   hasConsolidatablePerCueCaptions: boolean
   mediaHasTranscript: boolean
-  transcriptStatus: string
-  transcriptProgress: TranscriptProgress | null
-  mediaFileName: string
-  dialogOpen: boolean
-  openDialog: () => void
-  setDialogOpen: (next: boolean) => void
-  setDialogError: (message: string | null) => void
-  dialogError: string | null
-  markCaptionStarted: () => void
-  markCaptionEnded: () => void
-  markCaptionStopRequested: () => void
   handleExtractEmbeddedSubtitles: (() => Promise<void>) | undefined
   handleConsolidateCaptionsToSegment: (() => Promise<void>) | undefined
 }
@@ -64,31 +44,10 @@ export function useCaptionDialogState({
       [item.mediaId],
     ),
   )
-  const transcriptProgress = useMediaLibraryStore(
-    useCallback(
-      (s) => (item.mediaId ? (s.transcriptProgress.get(item.mediaId) ?? null) : null),
-      [item.mediaId],
-    ),
-  )
   const mediaForItem = useMediaLibraryStore(
     useCallback((s) => (item.mediaId ? (s.mediaById[item.mediaId] ?? null) : null), [item.mediaId]),
   )
-  const mediaFileName = mediaForItem?.fileName ?? ''
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogError, setDialogError] = useState<string | null>(null)
   const mediaHasTranscript = transcriptStatus === 'ready'
-  const captionStartedRef = useRef(false)
-  const captionStopRequestedRef = useRef(false)
-
-  const captionIsActive = transcriptStatus === 'queued' || transcriptStatus === 'transcribing'
-  useEffect(() => {
-    if (captionStartedRef.current && !captionIsActive) {
-      captionStartedRef.current = false
-      const keepOpen = captionStopRequestedRef.current || dialogError !== null
-      captionStopRequestedRef.current = false
-      setDialogOpen((wasOpen) => wasOpen && keepOpen)
-    }
-  }, [captionIsActive, dialogError])
 
   const linkedVideoCaptionOwner = useMemo(() => {
     if (item.type !== 'audio' || !item.mediaId) {
@@ -194,41 +153,11 @@ export function useCaptionDialogState({
     }
   }, [item.id])
 
-  const openDialog = useCallback(() => {
-    captionStopRequestedRef.current = false
-    setDialogError(null)
-    setDialogOpen(true)
-  }, [])
-
-  const markCaptionStarted = useCallback(() => {
-    captionStartedRef.current = true
-    captionStopRequestedRef.current = false
-  }, [])
-
-  const markCaptionEnded = useCallback(() => {
-    captionStartedRef.current = false
-  }, [])
-
-  const markCaptionStopRequested = useCallback(() => {
-    captionStopRequestedRef.current = true
-  }, [])
-
   return {
     canManageCaptions,
     canExtractEmbeddedSubtitles,
     hasConsolidatablePerCueCaptions,
     mediaHasTranscript,
-    transcriptStatus,
-    transcriptProgress,
-    mediaFileName,
-    dialogOpen,
-    openDialog,
-    setDialogOpen,
-    setDialogError,
-    dialogError,
-    markCaptionStarted,
-    markCaptionEnded,
-    markCaptionStopRequested,
     handleExtractEmbeddedSubtitles: canExtractEmbeddedSubtitles
       ? handleExtractEmbeddedSubtitles
       : undefined,

@@ -16,6 +16,7 @@ export {
   getAllMediaMetadata,
   getMedia,
   getMediaForProject,
+  getMediaSourceHandle,
   getProjectMediaIds,
   getProjectsUsingMedia,
   getThumbnailByMediaId,

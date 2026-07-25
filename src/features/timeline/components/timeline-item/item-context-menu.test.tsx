@@ -4,13 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { useSelectionStore } from '@/shared/state/selection'
 import { ItemContextMenu } from './item-context-menu'
 
-const { mockGetSceneVerificationModelOptions } = vi.hoisted(() => ({
-  mockGetSceneVerificationModelOptions: vi.fn(() => [
-    { value: 'gemma', label: 'Gemma Turbo' },
-    { value: 'lfm', label: 'Liquid Vision' },
-  ]),
-}))
-
 vi.mock('@/components/ui/context-menu', () => ({
   ContextMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   ContextMenuTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -33,10 +26,6 @@ vi.mock('@/components/ui/context-menu', () => ({
   ContextMenuSub: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   ContextMenuSubTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   ContextMenuSubContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock('@/features/timeline/deps/analysis', () => ({
-  getSceneVerificationModelOptions: mockGetSceneVerificationModelOptions,
 }))
 
 vi.mock('@/features/timeline/deps/settings', () => ({
@@ -85,7 +74,6 @@ function renderContextMenu(overrides: Partial<ComponentProps<typeof ItemContextM
 
 describe('ItemContextMenu scene detection', () => {
   beforeEach(() => {
-    mockGetSceneVerificationModelOptions.mockClear()
     useSelectionStore.setState({
       selectedItemIds: [],
       selectedMarkerId: null,
@@ -97,93 +85,43 @@ describe('ItemContextMenu scene detection', () => {
     })
   })
 
-  it('renders scene verification submenu labels from shared options', () => {
+  it('renders the algorithmic scene detection options', () => {
     renderContextMenu()
 
-    expect(mockGetSceneVerificationModelOptions).toHaveBeenCalledTimes(1)
     expect(screen.getByText('Detect Scenes & Split')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Fast (Histogram)' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'AI (Gemma Turbo)' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'AI (Liquid Vision)' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Optical Flow' })).toBeInTheDocument()
   })
 
-  it('dispatches the selected verification model when a scene detection option is clicked', () => {
+  it('dispatches optical-flow scene detection', () => {
     const { onDetectScenes } = renderContextMenu()
 
-    fireEvent.click(screen.getByRole('button', { name: 'AI (Liquid Vision)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Optical Flow' }))
 
-    expect(onDetectScenes).toHaveBeenCalledWith('optical-flow', 'lfm')
+    expect(onDetectScenes).toHaveBeenCalledWith('optical-flow')
   })
 })
 
 describe('ItemContextMenu captions', () => {
-  it('shows a single "Generate Captions" item when no transcript exists', () => {
-    const onOpenCaptionDialog = vi.fn()
+  it('does not show transcript generation actions', () => {
+    renderContextMenu({ captionActions: {} })
+
+    expect(screen.queryByRole('button', { name: 'Generate Captions' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Regenerate Captions' })).not.toBeInTheDocument()
+  })
+
+  it('keeps embedded subtitle extraction available', () => {
+    const onExtractEmbeddedSubtitles = vi.fn()
 
     renderContextMenu({
       captionActions: {
-        canManageCaptions: true,
-        hasCaptions: false,
-        onOpenCaptionDialog,
+        canExtractEmbeddedSubtitles: true,
+        onExtractEmbeddedSubtitles,
       },
     })
 
-    const item = screen.getByRole('button', { name: 'Generate Captions' })
-    expect(item).toBeInTheDocument()
-    expect(screen.queryByText('Captions')).not.toBeInTheDocument()
+    const item = screen.getByRole('button', { name: 'Extract Embedded Subtitles' })
     fireEvent.click(item)
-    expect(onOpenCaptionDialog).toHaveBeenCalledTimes(1)
-  })
-
-  it('shows a single "Generate Captions" item when captions are disabled', () => {
-    const onOpenCaptionDialog = vi.fn()
-
-    renderContextMenu({
-      captionActions: {
-        canManageCaptions: true,
-        hasCaptions: false,
-        onOpenCaptionDialog,
-      },
-    })
-
-    const item = screen.getByRole('button', { name: 'Generate Captions' })
-    expect(item).toBeInTheDocument()
-    expect(screen.queryByText('Captions')).not.toBeInTheDocument()
-
-    fireEvent.click(item)
-    expect(onOpenCaptionDialog).toHaveBeenCalledTimes(1)
-  })
-
-  it('labels the generate item "Regenerate Captions" when the clip already has captions', () => {
-    renderContextMenu({
-      captionActions: {
-        canManageCaptions: true,
-        hasCaptions: true,
-        onOpenCaptionDialog: vi.fn(),
-      },
-    })
-
-    expect(screen.getByRole('button', { name: 'Regenerate Captions' })).toBeInTheDocument()
-  })
-
-  it('does not show transcript visibility controls when the clip already has captions', () => {
-    renderContextMenu({
-      captionActions: {
-        canManageCaptions: true,
-        hasCaptions: true,
-        onOpenCaptionDialog: vi.fn(),
-      },
-    })
-
-    expect(
-      screen.queryByRole('button', { name: 'Hide Transcript Captions' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'Show Transcript Captions' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'Insert Existing Captions' }),
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Regenerate Captions' })).toBeInTheDocument()
+    expect(onExtractEmbeddedSubtitles).toHaveBeenCalledTimes(1)
   })
 })

@@ -27,15 +27,13 @@ interface SceneBrowserState {
   focusNonce: number
   /**
    * Active "find similar palette" reference. When set, the ranker scores
-   * scenes by palette distance against this reference instead of by
-   * query semantics. Cleared explicitly (chip × or escape).
+   * scenes by palette distance against this reference. Cleared explicitly.
    */
   reference: SceneBrowserReference | null
   /**
    * Panel-local Color Mode — swaps the search input for a grid of the
-   * library's dominant colors. Orthogonal to captionSearchMode; a user
-   * can come back to their preferred keyword/semantic lane by toggling
-   * it off. Not persisted so the default is always "text search".
+   * library's dominant colors. Not persisted so the default is always
+   * text search.
    */
   colorMode: boolean
   /**

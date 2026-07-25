@@ -324,33 +324,6 @@
       }
     },
     "settings": {
-      "localInference": {
-        "noRuntimes": "アクティブまたは常駐しているローカル推論ランタイムはありません。",
-        "activeJobs_one": "{{count}}件のアクティブなジョブ",
-        "activeJobs_other": "{{count}}件のアクティブなジョブ",
-        "unloadedToast_one": "{{count}}件のローカルランタイムをアンロードしました",
-        "unloadedToast_other": "{{count}}件のローカルランタイムをアンロードしました",
-        "unloadFailed": "ローカルランタイムのアンロードに失敗しました",
-        "unloadLabel": "ローカルモデルをアンロード",
-        "unloading": "アンロード中...",
-        "unloaded": "アンロード済み",
-        "unload": "アンロード"
-      },
-      "modelCache": {
-        "title": "ローカルAIモデルキャッシュ",
-        "description": "キャッシュされたモデルのサイズを表示します。モデルをクリアすると、次回新たにダウンロードされます。",
-        "inspectFailed": "ローカルモデルキャッシュの検査に失敗しました",
-        "clearedToast": "{{label}}をクリアしました",
-        "alreadyEmptyToast": "{{label}}はすでに空でした",
-        "clearFailed": "{{label}}のクリアに失敗しました",
-        "checking": "確認中...",
-        "refresh": "更新",
-        "inspectionUnavailable": "この環境ではキャッシュの検査は利用できません。",
-        "unavailable": "利用不可",
-        "approxSize": "約 {{size}}",
-        "cleared": "クリア済み",
-        "clear": "クリア"
-      },
       "hotkeys": {
         "title": "キーボードショートカット",
         "subtitle": "— コマンドを選択して、新しい組み合わせを記録します",

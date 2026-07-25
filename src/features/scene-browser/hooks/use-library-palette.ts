@@ -13,10 +13,8 @@ const DEFAULT_K = 12
  * Collect every caption's palette across the library and cluster them
  * into a small set of representative colors for the Color Mode picker.
  *
- * The hook reads from the media-library store (not the scene browser's
- * embeddings cache) because captions are the source of truth — the
- * palettes in `MediaCaption.palette` are what the ranker matches
- * against, so the grid must reflect the same data.
+ * Captions are the source of truth: the grid and ranker both use the
+ * existing entries in `MediaCaption.palette`.
  */
 export function useLibraryPalette(scope: string | null, k = DEFAULT_K): LabCluster[] {
   const mediaItems = useMediaLibraryStore((s) => s.mediaItems)

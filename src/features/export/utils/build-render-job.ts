@@ -69,6 +69,7 @@ function captureTimeline(sequence?: ExportableSequence): TimelineCapture {
     backgroundColor: seq.backgroundColor,
     busAudioEq: seq.busAudioEq,
     masterBusDb: seq.masterBusDb,
+    compositions: clone(seq.compositions),
   }
 
   // Distinguish exported sequence files from the Main-timeline export.

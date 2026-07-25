@@ -21,7 +21,6 @@ import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Input } from '@/components/ui/input'
 import {
   RotateCcw,
   Trash2,
@@ -33,18 +32,9 @@ import {
   Settings2,
   Rows3,
   HardDrive,
-  Sparkles,
   Play,
 } from 'lucide-react'
-import {
-  LocalInferenceUnloadControl,
-  LocalModelCacheControl,
-  useSettingsStore,
-  CAPTIONING_INTERVAL_BOUNDS,
-  DEFAULT_CAPTIONING_INTERVAL_SECONDS,
-  resolveCaptioningIntervalSec,
-  type CaptioningIntervalUnit,
-} from '@/features/editor/deps/settings'
+import { useSettingsStore } from '@/features/editor/deps/settings'
 import {
   useMediaLibraryStore,
   getSharedProxyKey,
@@ -58,7 +48,6 @@ import {
   importWaveformCache,
 } from '@/features/editor/deps/timeline-cache'
 import { clearPreviewAudioCache } from '@/features/editor/deps/composition-runtime'
-import { CAPTION_STYLE_PRESETS } from '@/shared/typography/caption-style-presets'
 import * as SelectPrimitive from '@radix-ui/react-select'
 import { useUiSoundStore } from '@/shared/state/ui-sound-store'
 import { emitUiSound, previewUiSound } from '@/shared/ui/ui-sound'
@@ -67,6 +56,7 @@ import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/
 import { createLogger } from '@/shared/logging/logger'
 import { cn } from '@/shared/ui/cn'
 import { useNaturalHeight } from '@/shared/ui/use-natural-height'
+import { DesktopAppControls } from './desktop-app-controls'
 
 const log = createLogger('SettingsDialog')
 
@@ -78,25 +68,8 @@ const MAX_SECTION_HEIGHT_VH = 0.7
 const SETTINGS_SECTIONS = [
   { id: 'general', labelKey: 'settings.sections.general', icon: Settings2 },
   { id: 'timeline', labelKey: 'settings.sections.timeline', icon: Rows3 },
-  { id: 'ai', labelKey: 'settings.sections.ai', icon: Sparkles },
   { id: 'storage', labelKey: 'settings.sections.storage', icon: HardDrive },
 ] as const
-
-const ESTIMATE_REFERENCE_DURATION_SEC = 60
-const ESTIMATE_REFERENCE_FPS = 30
-
-function formatCaptionEstimate(t: TFunction, unit: CaptioningIntervalUnit, value: number): string {
-  const intervalSec = resolveCaptioningIntervalSec(unit, value, ESTIMATE_REFERENCE_FPS)
-  if (intervalSec <= 0) {
-    return t('settings.ai.enterIntervalAboveZero')
-  }
-  const sceneCount = Math.max(1, Math.round(ESTIMATE_REFERENCE_DURATION_SEC / intervalSec))
-  return t('settings.ai.captionEstimate', {
-    sceneCount,
-    scenes: t('settings.ai.scene', { count: sceneCount }),
-    fps: ESTIMATE_REFERENCE_FPS,
-  })
-}
 
 type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]['id']
 
@@ -373,9 +346,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const enableFilmstripExtraction = useSettingsStore((s) => s.enableFilmstripExtraction)
   const autoSaveInterval = useSettingsStore((s) => s.autoSaveInterval)
   const maxUndoHistory = useSettingsStore((s) => s.maxUndoHistory)
-  const captioningIntervalUnit = useSettingsStore((s) => s.captioningIntervalUnit)
-  const captioningIntervalValue = useSettingsStore((s) => s.captioningIntervalValue)
-  const defaultCaptionStylePresetId = useSettingsStore((s) => s.defaultCaptionStylePresetId)
   const setSetting = useSettingsStore((s) => s.setSetting)
   const resetToDefaults = useSettingsStore((s) => s.resetToDefaults)
   const uiSoundsEnabled = useUiSoundStore((s) => s.enabled)
@@ -384,11 +354,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const setUiSoundEnabled = useUiSoundStore((s) => s.setEnabled)
   const setUiSoundVolume = useUiSoundStore((s) => s.setVolume)
   const setUiSoundVoice = useUiSoundStore((s) => s.setVoice)
-
-  const intervalBounds = CAPTIONING_INTERVAL_BOUNDS[captioningIntervalUnit]
-  const intervalInputStep = captioningIntervalUnit === 'seconds' ? 0.5 : 1
-  const intervalUnitLabel =
-    captioningIntervalUnit === 'seconds' ? t('settings.ai.unitSec') : t('settings.ai.unitFrames')
 
   const mediaItems = useMediaLibraryStore((s) => s.mediaItems)
   const proxyStatus = useMediaLibraryStore((s) => s.proxyStatus)
@@ -765,118 +730,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                             </div>
                           </div>
                         )}
-                      </div>
-                    )}
-
-                    {activeSection === 'ai' && (
-                      <div className="space-y-3">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                              <Label className="text-sm">
-                                {t('settings.ai.captionSampleInterval')}
-                              </Label>
-                              <p className="text-xs text-muted-foreground">
-                                {t('settings.ai.captionSampleIntervalDescription')}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center rounded-md border border-border bg-secondary p-0.5">
-                              {(['seconds', 'frames'] as const).map((unit) => (
-                                <button
-                                  key={unit}
-                                  type="button"
-                                  onClick={() => setSetting('captioningIntervalUnit', unit)}
-                                  className={cn(
-                                    'rounded px-2.5 py-1 text-xs transition-colors',
-                                    captioningIntervalUnit === unit
-                                      ? 'bg-primary/15 text-primary'
-                                      : 'text-muted-foreground hover:text-foreground',
-                                  )}
-                                >
-                                  {unit === 'seconds'
-                                    ? t('settings.ai.seconds')
-                                    : t('settings.ai.frames')}
-                                </button>
-                              ))}
-                            </div>
-                            <Input
-                              type="number"
-                              inputMode="decimal"
-                              className="h-8 w-24"
-                              min={intervalBounds.min}
-                              max={intervalBounds.max}
-                              step={intervalInputStep}
-                              value={captioningIntervalValue}
-                              onChange={(event) => {
-                                const parsed = Number(event.target.value)
-                                if (Number.isFinite(parsed)) {
-                                  setSetting('captioningIntervalValue', parsed)
-                                }
-                              }}
-                            />
-                            <span className="text-xs text-muted-foreground">
-                              {intervalUnitLabel}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-muted-foreground"
-                              onClick={() => {
-                                setSetting('captioningIntervalUnit', 'seconds')
-                                setSetting(
-                                  'captioningIntervalValue',
-                                  DEFAULT_CAPTIONING_INTERVAL_SECONDS,
-                                )
-                              }}
-                              disabled={
-                                captioningIntervalUnit === 'seconds' &&
-                                captioningIntervalValue === DEFAULT_CAPTIONING_INTERVAL_SECONDS
-                              }
-                            >
-                              {t('common.reset')}
-                            </Button>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {t('settings.ai.captionIntervalHint', {
-                              estimate: formatCaptionEstimate(
-                                t,
-                                captioningIntervalUnit,
-                                captioningIntervalValue,
-                              ),
-                            })}
-                          </p>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="space-y-0.5">
-                            <Label className="text-sm">
-                              {t('settings.ai.defaultCaptionStyle')}
-                            </Label>
-                            <p className="text-xs text-muted-foreground">
-                              {t('settings.ai.defaultCaptionStyleDescription')}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {CAPTION_STYLE_PRESETS.map((preset) => (
-                              <button
-                                key={preset.id}
-                                type="button"
-                                title={t(preset.hintKey)}
-                                onClick={() => setSetting('defaultCaptionStylePresetId', preset.id)}
-                                className={cn(
-                                  'rounded-md border px-2.5 py-1 text-xs transition-colors',
-                                  defaultCaptionStylePresetId === preset.id
-                                    ? 'border-primary bg-primary/15 text-primary'
-                                    : 'border-border text-muted-foreground hover:text-foreground',
-                                )}
-                              >
-                                {preset.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+                        <DesktopAppControls />
                       </div>
                     )}
 
@@ -1090,17 +944,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                                   ? t('common.partial')
                                   : t('common.delete')}
                           </Button>
-                        </div>
-                        <Separator className="bg-white/8" />
-                        <div className="space-y-3">
-                          <div className="space-y-1">
-                            <Label className="text-sm">{t('settings.storage.localAi')}</Label>
-                            <p className="text-xs text-muted-foreground">
-                              {t('settings.storage.localAiDescription')}
-                            </p>
-                          </div>
-                          <LocalInferenceUnloadControl />
-                          <LocalModelCacheControl />
                         </div>
                       </div>
                     )}

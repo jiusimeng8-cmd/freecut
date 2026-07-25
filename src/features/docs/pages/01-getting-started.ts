@@ -5,7 +5,7 @@ const page = {
   slug: 'getting-started',
   title: 'Getting Started',
   description:
-    'What FreeCut is, what your browser needs, and your first edit from launch to export.',
+    'What FreeCut is, which host to use, and your first edit from launch to export.',
   category: 'Start',
   related: ['concepts', 'workspaces', 'export'],
   sections: [
@@ -14,35 +14,36 @@ const page = {
       blocks: [
         {
           kind: 'paragraph',
-          text: 'FreeCut is a **local-first** video editor that runs entirely in your browser — there is no account, upload, or server render. Editing, effects, color, AI tools, and export all run on your own machine using your GPU and CPU.',
+          text: 'FreeCut is a **local-first** video editor. The Web editor and Electron desktop app share the same editing UI; projects, linked media, preview, and export stay on your machine.',
         },
         {
           kind: 'note',
           tone: 'tip',
-          text: 'Your media stays on your device. FreeCut links to the original files and writes projects, caches, and exports to a **workspace folder** you choose — nothing is sent to the cloud.',
+          text: 'The Electron desktop app is required for the Local Agent Host, MCP tools, protected timeline writes, FFmpeg services, and safeStorage. Cloud Agent or ASR features send only the inputs needed for the task you start.',
         },
       ],
     },
     {
-      title: 'What your browser needs',
+      title: 'Choose a host',
       blocks: [
         {
           kind: 'paragraph',
-          text: 'FreeCut relies on modern web APIs, so a recent Chromium browser is the supported path.',
+          text: 'Use Electron for the complete product. Use a recent Chromium browser when you only need the Web editing workflow.',
         },
         {
           kind: 'table',
           headers: ['Browser', 'Status'],
           rows: [
-            ['Chrome / Edge 113+', 'Fully supported'],
-            ['Brave', 'Works after enabling the File System Access API flag'],
+            ['Electron desktop', 'Editing plus Local Agent, MCP, credentials, and local services'],
+            ['Chrome / Edge 113+', 'Web editing; no Local Agent Host'],
+            ['Brave', 'Web editing after enabling the File System Access API flag'],
             ['Safari / Firefox', 'Not yet supported for the full workflow'],
           ],
         },
         {
           kind: 'note',
           tone: 'info',
-          text: 'FreeCut uses the File System Access API (workspace folders), WebCodecs (decode and export), WebGPU (effects, color, AI), and OPFS (caches). Keep hardware acceleration on and GPU drivers current.',
+          text: 'The Renderer uses the File System Access API, WebCodecs, WebGPU, and OPFS. Electron adds Main/Preload IPC and native local services. Keep hardware acceleration on and GPU drivers current.',
         },
         {
           kind: 'note',
@@ -57,7 +58,7 @@ const page = {
         {
           kind: 'steps',
           items: [
-            'Open FreeCut in a supported browser and, when prompted, pick a **workspace folder** you can read and write.',
+            'Open the Electron desktop app for Agent work, or the Web editor for manual editing, then pick a **workspace folder** you can read and write.',
             'On the Projects page, choose **New Project** and set the resolution and frame rate for the edit.',
             'Open the **Media** tab and use **Import** to add files, or drag media straight into the library.',
             'Drag a clip from the Media panel onto a timeline track.',

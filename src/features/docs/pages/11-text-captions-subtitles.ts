@@ -7,7 +7,7 @@ const page = {
   description:
     'Add and style text clips, generate captions from a transcript, and import embedded subtitle tracks.',
   category: 'Creative Tools',
-  related: ['shapes-masks', 'properties', 'local-ai'],
+  related: ['shapes-masks', 'properties'],
   sections: [
     {
       title: 'Three related things',

@@ -324,33 +324,6 @@
       }
     },
     "settings": {
-      "localInference": {
-        "noRuntimes": "Es sind keine lokalen Inferenz-Laufzeiten aktiv oder resident.",
-        "activeJobs_one": "{{count}} aktiver Auftrag",
-        "activeJobs_other": "{{count}} aktive Aufträge",
-        "unloadedToast_one": "{{count}} lokale Laufzeit entladen",
-        "unloadedToast_other": "{{count}} lokale Laufzeiten entladen",
-        "unloadFailed": "Lokale Laufzeiten konnten nicht entladen werden",
-        "unloadLabel": "Lokale Modelle entladen",
-        "unloading": "Wird entladen...",
-        "unloaded": "Entladen",
-        "unload": "Entladen"
-      },
-      "modelCache": {
-        "title": "Cache für lokale KI-Modelle",
-        "description": "Zeigt die Größe des zwischengespeicherten Modells an. Lösche ein Modell, um beim nächsten Mal einen erneuten Download zu erzwingen.",
-        "inspectFailed": "Lokaler Modell-Cache konnte nicht überprüft werden",
-        "clearedToast": "{{label}} gelöscht",
-        "alreadyEmptyToast": "{{label}} war bereits leer",
-        "clearFailed": "{{label}} konnte nicht gelöscht werden",
-        "checking": "Wird geprüft...",
-        "refresh": "Aktualisieren",
-        "inspectionUnavailable": "Die Cache-Überprüfung ist in dieser Umgebung nicht verfügbar.",
-        "unavailable": "Nicht verfügbar",
-        "approxSize": "Ca. {{size}}",
-        "cleared": "Gelöscht",
-        "clear": "Löschen"
-      },
       "hotkeys": {
         "title": "Tastenkürzel",
         "subtitle": "— wähle einen Befehl und nimm dann eine neue Kombination auf",

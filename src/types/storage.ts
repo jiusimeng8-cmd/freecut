@@ -118,7 +118,7 @@ export interface MediaMetadata {
    */
   attribution?: MediaAttribution
   /**
-   * AI-generated timestamped captions from LFM vision-language model.
+   * Timestamped scene captions retained for workspace compatibility.
    * Mirrors the canonical `cache/ai/captions.json` payload for in-memory
    * consumers (search, Scene Browser). See `MediaCaption` in
    * `lib/analysis/captioning/types.ts` for the full shape including optional
@@ -176,6 +176,7 @@ export type MediaTranscriptModel =
   | 'whisper-base'
   | 'whisper-small'
   | 'whisper-large'
+  | 'fun-asr'
 
 export type MediaTranscriptQuantization = 'hybrid' | 'fp32' | 'fp16' | 'q8' | 'q4'
 

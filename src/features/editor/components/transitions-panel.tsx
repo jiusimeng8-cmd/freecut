@@ -57,6 +57,7 @@ const TransitionCard = memo(function TransitionCard({
   onDragStart,
   onDragEnd,
 }: TransitionCardProps) {
+  const { t } = useTranslation()
   const { Icon, showPreview, previewDirection } = resolveTransitionCardVisuals(config)
   const [hovered, setHovered] = useState(false)
 
@@ -96,7 +97,9 @@ const TransitionCard = memo(function TransitionCard({
         </div>
       )}
       <span className="text-[10px] text-muted-foreground group-hover:text-foreground truncate w-full">
-        {config.label}
+        {t(`editor.transitions.names.${config.id}`, {
+          defaultValue: config.label,
+        })}
       </span>
     </button>
   )

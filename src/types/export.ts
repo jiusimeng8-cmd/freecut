@@ -1,5 +1,6 @@
 import type { AudioEqSettings } from './audio'
 import type { TimelineTrack } from './timeline'
+import type { TimelineItem } from './timeline'
 import type { Transition } from './transition'
 import type { ItemKeyframes } from './keyframe'
 
@@ -56,4 +57,21 @@ export interface CompositionInputProps {
   busAudioEq?: AudioEqSettings
   /** Project-scoped master bus gain in dB (0 = unity). Applied to final mix. */
   masterBusDb?: number
+  /** Frozen nested compositions used by queued exports and worker rendering. */
+  compositions?: NestedCompositionInput[]
+}
+
+export interface NestedCompositionInput {
+  id: string
+  name: string
+  items: TimelineItem[]
+  tracks: TimelineTrack[]
+  transitions: Transition[]
+  keyframes: ItemKeyframes[]
+  fps: number
+  width: number
+  height: number
+  durationInFrames: number
+  backgroundColor?: string
+  busAudioEq?: AudioEqSettings
 }

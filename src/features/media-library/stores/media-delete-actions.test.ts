@@ -110,7 +110,6 @@ function createMockState(overrides: DeleteState = {}): MediaLibraryState & Media
     proxyStatus: new Map(),
     proxyProgress: new Map(),
     transcriptStatus: new Map(),
-    transcriptProgress: new Map(),
     ...overrides,
   } as MediaLibraryState & MediaLibraryActions
 }

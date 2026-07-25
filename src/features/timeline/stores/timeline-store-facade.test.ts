@@ -1,6 +1,7 @@
 // @vitest-environment node
 
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import type { Project } from '@/types/project'
 
 // Mock all external dependencies before importing the facade
 const indexedDbMocks = vi.hoisted(() => ({
@@ -109,7 +110,9 @@ import { useCompositionsStore } from './compositions-store'
 import { useCompositionNavigationStore } from './composition-navigation-store'
 import { useTimelineStore } from './timeline-store-facade'
 import { useProjectStore } from '@/features/timeline/deps/projects'
+import { useEditorStore } from '@/shared/state/editor'
 import { captureSnapshot } from './commands/snapshot'
+import { execute } from './actions/shared'
 import { rateStretchItemWithoutHistory } from './actions/item-edit-actions'
 
 describe('TimelineStoreFacade', () => {
@@ -143,6 +146,7 @@ describe('TimelineStoreFacade', () => {
     useTimelineSettingsStore.getState().setScrollPosition(0)
     useTimelineSettingsStore.getState().setSnapEnabled(true)
     useTimelineSettingsStore.getState().markClean()
+    useEditorStore.setState({ linkedSelectionEnabled: true })
     useCompositionsStore.getState().setCompositions([])
     useCompositionNavigationStore.getState().resetToRoot()
     useTimelineCommandStore.getState().clearHistory()
@@ -928,6 +932,267 @@ describe('TimelineStoreFacade', () => {
   })
 
   describe('loadTimeline', () => {
+    it('keeps a speed-diverged split AV timeline stable across save and reload', async () => {
+      useTimelineSettingsStore.getState().setFps(60)
+      useItemsStore.getState().setTracks([
+        {
+          id: 'track-v1',
+          name: 'V1',
+          kind: 'video',
+          order: 0,
+          height: 80,
+          locked: false,
+          visible: true,
+          muted: false,
+          solo: false,
+          items: [],
+        },
+        {
+          id: 'track-v2',
+          name: 'V2',
+          kind: 'video',
+          order: 1,
+          height: 80,
+          locked: false,
+          visible: true,
+          muted: false,
+          solo: false,
+          items: [],
+        },
+        {
+          id: 'track-a1',
+          name: 'A1',
+          kind: 'audio',
+          order: 2,
+          height: 80,
+          locked: false,
+          visible: true,
+          muted: false,
+          solo: false,
+          items: [],
+        },
+        {
+          id: 'track-captions',
+          name: 'Captions',
+          kind: 'video',
+          order: 3,
+          height: 80,
+          locked: false,
+          visible: true,
+          muted: false,
+          solo: false,
+          items: [],
+        },
+      ])
+      useItemsStore.getState().setItems([
+        {
+          id: 'video-1',
+          type: 'video',
+          trackId: 'track-v1',
+          from: 0,
+          durationInFrames: 944,
+          label: 'clip.mp4',
+          src: 'blob:video',
+          mediaId: 'media-1',
+          originId: 'origin-1',
+          linkedGroupId: 'group-1',
+          sourceStart: 0,
+          sourceEnd: 944,
+          sourceDuration: 1200,
+          sourceFps: 60,
+          speed: 1,
+        },
+        {
+          id: 'audio-1',
+          type: 'audio',
+          trackId: 'track-a1',
+          from: 0,
+          durationInFrames: 944,
+          label: 'clip.mp4',
+          src: 'blob:audio',
+          mediaId: 'media-1',
+          originId: 'origin-1',
+          linkedGroupId: 'group-1',
+          sourceStart: 0,
+          sourceEnd: 944,
+          sourceDuration: 1200,
+          sourceFps: 60,
+          speed: 1,
+        },
+        {
+          id: 'subtitle-before',
+          type: 'subtitle',
+          trackId: 'track-captions',
+          from: 4,
+          durationInFrames: 66,
+          label: 'Transcript',
+          color: '#ffffff',
+          mediaId: 'media-1',
+          originId: 'origin-1',
+          linkedGroupId: 'group-1',
+          source: { type: 'transcript', mediaId: 'media-1', clipId: 'video-1' },
+          cues: [
+            {
+              id: 'cue-before',
+              startSeconds: 0,
+              endSeconds: 1,
+              text: 'Before',
+            },
+          ],
+        },
+        {
+          id: 'subtitle-after',
+          type: 'subtitle',
+          trackId: 'track-captions',
+          from: 158,
+          durationInFrames: 387,
+          label: 'Transcript',
+          color: '#ffffff',
+          mediaId: 'media-1',
+          originId: 'origin-1',
+          linkedGroupId: 'group-1',
+          source: { type: 'transcript', mediaId: 'media-1', clipId: 'video-1' },
+          cues: [
+            {
+              id: 'cue-after',
+              startSeconds: 0,
+              endSeconds: 6,
+              text: 'After',
+            },
+          ],
+        },
+      ])
+
+      // add_text
+      useTimelineStore.getState().addItem({
+        id: 'text-1',
+        type: 'text',
+        trackId: 'track-v2',
+        from: 1000,
+        durationInFrames: 60,
+        label: 'Text',
+        text: 'Keyword',
+        color: '#ffffff',
+      })
+
+      // set_speed(preserveDuration=true) on the video only. Explicit source
+      // bounds make the linked audio remain at 1x, matching the Agent path.
+      execute(
+        'RATE_STRETCH_ITEM',
+        () => {
+          rateStretchItemWithoutHistory('video-1', 0, 944, 1.25)
+          useItemsStore.getState()._updateItem('video-1', {
+            durationInFrames: 944,
+            speed: 1.25,
+            sourceEnd: 1180,
+          })
+        },
+        { id: 'video-1', newSpeed: 1.25, preserveDuration: true },
+      )
+
+      // split
+      expect(useTimelineStore.getState().splitItem('video-1', 120)).not.toBeNull()
+      const runtimeItems = useItemsStore.getState().items
+      const rightVideo = runtimeItems.find((item) => item.type === 'video' && item.id !== 'video-1')
+      expect(rightVideo).toMatchObject({
+        from: 120,
+        durationInFrames: 824,
+        speed: 1.25,
+        embeddedAudioMuted: true,
+      })
+      expect(runtimeItems.filter((item) => item.type === 'audio')).toHaveLength(1)
+      expect(runtimeItems).toHaveLength(6)
+      expect(useTimelineCommandStore.getState().undoStack).toHaveLength(3)
+      const runtimeAudioProjection = runtimeItems
+        .filter((item) => item.type === 'audio')
+        .map((item) => ({
+          id: item.id,
+          from: item.from,
+          durationInFrames: item.durationInFrames,
+          speed: item.speed,
+          linkedGroupId: item.linkedGroupId,
+        }))
+      const runtimeSubtitleProjection = runtimeItems
+        .filter((item) => item.type === 'subtitle')
+        .map((item) => ({
+          id: item.id,
+          linkedGroupId: item.linkedGroupId,
+          clipId: 'clipId' in item.source ? item.source.clipId : null,
+        }))
+
+      let storedProject: Project = {
+        id: 'project-1',
+        name: 'Persistence fixture',
+        description: '',
+        createdAt: 0,
+        updatedAt: 0,
+        duration: 0,
+        metadata: { fps: 60, width: 1920, height: 1080 },
+      }
+      indexedDbMocks.getProject.mockImplementation(
+        async () => JSON.parse(JSON.stringify(storedProject)) as Project,
+      )
+      indexedDbMocks.updateProject.mockImplementation(async (_projectId, patch) => {
+        storedProject = JSON.parse(JSON.stringify({ ...storedProject, ...patch })) as Project
+      })
+      mediaLibraryMocks.mediaById = {
+        'media-1': { audioCodec: 'aac' },
+      }
+      mediaValidationMocks.validateProjectMediaReferences.mockResolvedValue([])
+
+      await useTimelineStore.getState().saveTimeline('project-1')
+      const savedTimeline = storedProject.timeline
+      const projectJson = JSON.stringify(storedProject)
+      const parsedProject = JSON.parse(projectJson) as Project
+      expect(parsedProject.timeline?.items).toHaveLength(6)
+      expect(savedTimeline?.items).toHaveLength(6)
+      expect(savedTimeline?.items.filter((item) => item.type === 'audio')).toHaveLength(1)
+      expect(
+        savedTimeline?.items.find((item) => item.type === 'video' && item.id !== 'video-1'),
+      ).toMatchObject({ embeddedAudioMuted: true })
+
+      useItemsStore.getState().setItems([])
+      useItemsStore.getState().setTracks([])
+      useTimelineCommandStore.getState().clearHistory()
+      await useTimelineStore.getState().loadTimeline('project-1')
+
+      const reopenedItems = useItemsStore.getState().items
+      expect(reopenedItems).toHaveLength(6)
+      expect(reopenedItems.filter((item) => item.type === 'audio')).toHaveLength(1)
+      expect(reopenedItems.filter((item) => item.type === 'video')).toHaveLength(2)
+      expect(
+        reopenedItems.find((item) => item.type === 'video' && item.id !== 'video-1'),
+      ).toMatchObject({
+        from: 120,
+        durationInFrames: 824,
+        speed: 1.25,
+        embeddedAudioMuted: true,
+      })
+      expect(
+        reopenedItems
+          .filter((item) => item.type === 'audio')
+          .map((item) => ({
+            id: item.id,
+            from: item.from,
+            durationInFrames: item.durationInFrames,
+            speed: item.speed,
+            linkedGroupId: item.linkedGroupId,
+          })),
+      ).toEqual(runtimeAudioProjection)
+      expect(
+        reopenedItems
+          .filter((item) => item.type === 'subtitle')
+          .map((item) => ({
+            id: item.id,
+            linkedGroupId: item.linkedGroupId,
+            clipId: 'clipId' in item.source ? item.source.clipId : null,
+          })),
+      ).toEqual(runtimeSubtitleProjection)
+      expect(useTimelineCommandStore.getState().undoStack).toHaveLength(0)
+      expect(useTimelineCommandStore.getState().redoStack).toHaveLength(0)
+      expect(indexedDbMocks.updateProject).toHaveBeenCalledTimes(1)
+    })
+
     it('requires explicit approval before upgrading an older stored project', async () => {
       indexedDbMocks.getProject.mockResolvedValue({
         id: 'project-1',

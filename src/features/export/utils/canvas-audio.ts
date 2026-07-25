@@ -25,7 +25,8 @@ import {
 import {
   useCompositionsStore,
   collectReachableCompositionIdsFromTracks,
-} from '@/features/export/deps/timeline-compositions'
+} from '@/features/export/deps/timeline-compositions-render'
+import type { SubComposition } from '@/features/export/deps/timeline-compositions-render'
 import { getPropertyKeyframes, interpolatePropertyValue } from '@/features/export/deps/keyframes'
 import { blobUrlManager } from '@/infrastructure/browser/blob-url-manager'
 import { getMediaAudioCodecById, resolveMediaUrl } from '@/features/export/deps/media-library'
@@ -56,6 +57,20 @@ import {
 } from '@/shared/utils/audio-pitch'
 
 const log = createLogger('CanvasAudio')
+
+function getCompositionById(
+  composition: CompositionInputProps,
+): Record<string, SubComposition> {
+  if (composition.compositions) {
+    return Object.fromEntries(
+      composition.compositions.map((nestedComposition) => [
+        nestedComposition.id,
+        nestedComposition as SubComposition,
+      ]),
+    )
+  }
+  return useCompositionsStore.getState().compositionById
+}
 
 // =============================================================================
 // PERFORMANCE OPTIMIZATION: Audio Decode Cache
@@ -605,6 +620,7 @@ function appendCompositionAudioSegments(params: {
   audioEqStages?: ResolvedAudioEqSettings[]
   audioPitchShiftSemitones?: number
   visited?: Set<string>
+  compositionById: Record<string, SubComposition>
 }): void {
   const { segments, track, compositionItem, subComp, fps } = params
   const visited = params.visited ?? new Set<string>()
@@ -661,7 +677,7 @@ function appendCompositionAudioSegments(params: {
         continue
       if (visited.has(subItem.compositionId)) continue
 
-      const nestedSubComp = useCompositionsStore.getState().getComposition(subItem.compositionId)
+      const nestedSubComp = params.compositionById[subItem.compositionId]
       if (!nestedSubComp) continue
 
       const nestedWrapper = {
@@ -701,6 +717,7 @@ function appendCompositionAudioSegments(params: {
         audioEqStages: appendResolvedAudioEqSources(wrapperAudioEqStages, subTrack?.audioEq),
         audioPitchShiftSemitones: wrapperAudioPitchShiftSemitones,
         visited: nestedVisited,
+        compositionById: params.compositionById,
       })
       continue
     }
@@ -827,6 +844,7 @@ export function extractAudioSegments(
     }),
   )
   const busAudioEqStages = appendResolvedAudioEqSources(undefined, composition.busAudioEq)
+  const compositionById = getCompositionById(composition)
   const audioTransitionItemIds = new Set<string>()
   const audioTransitionDefs: Transition[] = transitions.filter((transition) => {
     const leftItem = timelineItems.find((item) => item.id === transition.leftClipId)
@@ -870,7 +888,7 @@ export function extractAudioSegments(
       } else if (item.type === 'audio') {
         const audioItem = item as AudioItem
         if (isCompositionAudioItem(audioItem)) {
-          const subComp = useCompositionsStore.getState().getComposition(audioItem.compositionId)
+          const subComp = compositionById[audioItem.compositionId]
           if (!subComp) continue
           appendCompositionAudioSegments({
             segments: audioOnlySegments,
@@ -879,6 +897,7 @@ export function extractAudioSegments(
             subComp,
             fps,
             audioEqStages: appendResolvedAudioEqSources(busAudioEqStages, track.audioEq),
+            compositionById,
           })
           continue
         }
@@ -988,7 +1007,7 @@ export function extractAudioSegments(
       if (item.type !== 'composition') continue
       const compItem = item as CompositionItem
       if (getLinkedCompositionAudioCompanion(timelineItems, compItem)) continue
-      const subComp = useCompositionsStore.getState().getComposition(compItem.compositionId)
+      const subComp = compositionById[compItem.compositionId]
       if (!subComp) continue
       appendCompositionAudioSegments({
         segments,
@@ -997,6 +1016,7 @@ export function extractAudioSegments(
         subComp,
         fps,
         audioEqStages: appendResolvedAudioEqSources(busAudioEqStages, track.audioEq),
+        compositionById,
       })
     }
   }
@@ -1810,7 +1830,7 @@ function softClipAudioMix(output: Float32Array[]): void {
 async function resolveSubCompMediaUrls(composition: CompositionInputProps): Promise<void> {
   const tracks = composition.tracks ?? []
   const urlResolutions: Promise<void>[] = []
-  const compositionById = useCompositionsStore.getState().compositionById
+  const compositionById = getCompositionById(composition)
   const reachableCompositionIds = collectReachableCompositionIdsFromTracks(tracks, compositionById)
   for (const compositionId of reachableCompositionIds) {
     const subComp = compositionById[compositionId]

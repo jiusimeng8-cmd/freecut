@@ -12,7 +12,6 @@ export type {
 } from './agent-store'
 // Tool registry surface — also the seam a future MCP server / headless CLI uses.
 export {
-  buildToolCatalog,
   callMcpTool,
   getEditorTool,
   listEditorTools,

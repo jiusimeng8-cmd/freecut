@@ -1,5 +1,17 @@
-export type { EditorAgentTool, JsonSchema, ToolResult, ToolValidation } from './types'
-export { buildToolCatalog, getEditorTool, listEditorTools } from './registry'
+export type {
+  EditorAgentTool,
+  JsonSchema,
+  NormalizedToolResult,
+  ToolImpactFlag,
+  ToolOperationManifest,
+  ToolPhaseReceipt,
+  ToolPostReadAssertion,
+  ToolReconciliationEvidence,
+  ToolReconciliationStatus,
+  ToolResult,
+  ToolValidation,
+} from './types'
+export { getEditorTool, listEditorTools } from './registry'
 export {
   buildClipRefs,
   resolveClipRef,
@@ -8,4 +20,14 @@ export {
   resolveTargetItems,
   type ClipRefEntry,
 } from './clip-refs'
-export { callMcpTool, listMcpTools, type McpCallResult, type McpToolDescriptor } from './mcp'
+export {
+  callMcpTool,
+  describeMcpTool,
+  listMcpToolCategories,
+  listMcpTools,
+  searchMcpTools,
+  type McpCallResult,
+  type McpToolCategoryDescriptor,
+  type McpToolDescriptor,
+  type McpToolSearchOptions,
+} from './mcp'

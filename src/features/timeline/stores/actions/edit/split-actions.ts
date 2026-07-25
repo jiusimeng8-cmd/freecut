@@ -4,7 +4,10 @@ import { useItemsStore } from '../../items-store'
 import { useTimelineSettingsStore } from '../../timeline-settings-store'
 import { useSelectionStore } from '@/shared/state/selection'
 import { execute, applyTransitionRepairs } from '../shared'
-import { getLinkedItemsForEdit } from '../linked-edit'
+import {
+  getLinkedItemsForEdit,
+  getSynchronizedLinkedItemsForEdit,
+} from '../linked-edit'
 import { getUniqueLinkedItemAnchorIds } from '../../../utils/linked-items'
 import { applySplitBookkeeping, type SplitResultEntry } from '../split-bookkeeping'
 import { isLinkedSelectionEnabled, isInTransitionOverlap } from './shared'
@@ -15,7 +18,9 @@ export function splitItem(
   splitFrame: number,
 ): { leftItem: TimelineItem; rightItem: TimelineItem } | null {
   const items = useItemsStore.getState().items
-  const itemsToSplit = getLinkedItemsForEdit(items, id, isLinkedSelectionEnabled())
+  const linkedSelectionEnabled = isLinkedSelectionEnabled()
+  const linkedItems = getLinkedItemsForEdit(items, id, linkedSelectionEnabled)
+  const itemsToSplit = getSynchronizedLinkedItemsForEdit(items, id, linkedSelectionEnabled)
 
   for (const item of itemsToSplit) {
     // Bounds check first — out-of-range splits are a silent no-op (handled by _splitItem),
@@ -46,7 +51,11 @@ export function splitItem(
       const anchorResult = splitResults.find((entry) => entry.originalId === id)?.result ?? null
       if (!anchorResult) return null
 
-      applySplitBookkeeping(splitResults)
+      const splitItemIds = new Set(splitResults.map((entry) => entry.originalId))
+      applySplitBookkeeping(splitResults, {
+        unsplitLinkedItems: linkedItems.filter((item) => !splitItemIds.has(item.id)),
+        splitFrame,
+      })
 
       // Keep selection anchored to the split clip for immediate downstream
       // adjacency/transition detection across all split entry points.
@@ -82,12 +91,14 @@ export function splitAllItemsAtFrame(splitFrame: number): number {
   execute(
     'SPLIT_ALL_ITEMS_AT_FRAME',
     () => {
+      const linkedSelectionEnabled = isLinkedSelectionEnabled()
       for (const anchorId of anchorIds) {
         const currentItems = useItemsStore.getState().items
-        const itemsToSplit = getLinkedItemsForEdit(
+        const linkedItems = getLinkedItemsForEdit(currentItems, anchorId, linkedSelectionEnabled)
+        const itemsToSplit = getSynchronizedLinkedItemsForEdit(
           currentItems,
           anchorId,
-          isLinkedSelectionEnabled(),
+          linkedSelectionEnabled,
         )
         if (itemsToSplit.length === 0) continue
 
@@ -117,7 +128,7 @@ export function splitAllItemsAtFrame(splitFrame: number): number {
         const splitResults = itemsToSplit
           .map((item) => ({
             originalId: item.id,
-            originalLinkedGroupId: item.linkedGroupId,
+            originalLinkedGroupId: useItemsStore.getState().itemById[item.id]?.linkedGroupId,
             result: useItemsStore.getState()._splitItem(item.id, splitFrame),
           }))
           .filter((entry): entry is SplitResultEntry => entry.result !== null)
@@ -126,7 +137,11 @@ export function splitAllItemsAtFrame(splitFrame: number): number {
           splitResults.find((entry) => entry.originalId === anchorId)?.result ?? null
         if (!anchorResult) continue
 
-        applySplitBookkeeping(splitResults)
+        const splitItemIds = new Set(splitResults.map((entry) => entry.originalId))
+        applySplitBookkeeping(splitResults, {
+          unsplitLinkedItems: linkedItems.filter((item) => !splitItemIds.has(item.id)),
+          splitFrame,
+        })
         useSelectionStore
           .getState()
           .selectItems(splitResults.map((entry) => entry.result.leftItem.id))
@@ -159,16 +174,28 @@ export function splitItemAtFrames(id: string, splitFrames: number[]): number {
   execute(
     'SPLIT_ITEM_MULTI',
     () => {
-      const itemsToSplit = getLinkedItemsForEdit(
+      const linkedSelectionEnabled = isLinkedSelectionEnabled()
+      const initialItemsToSplit = getSynchronizedLinkedItemsForEdit(
         useItemsStore.getState().items,
         id,
-        isLinkedSelectionEnabled(),
+        linkedSelectionEnabled,
       )
-      if (itemsToSplit.length === 0) return
+      if (initialItemsToSplit.length === 0) return
 
-      const rightIdsByOriginalId = new Map(itemsToSplit.map((item) => [item.id, [] as string[]]))
+      const rightIdsByOriginalId = new Map(
+        initialItemsToSplit.map((item) => [item.id, [] as string[]]),
+      )
 
       for (const frame of sorted) {
+        const currentItems = useItemsStore.getState().items
+        const linkedItems = getLinkedItemsForEdit(currentItems, id, linkedSelectionEnabled)
+        const itemsToSplit = getSynchronizedLinkedItemsForEdit(
+          currentItems,
+          id,
+          linkedSelectionEnabled,
+        )
+        if (itemsToSplit.length === 0) continue
+
         const currentItemsById = useItemsStore.getState().itemById
         const canSplitFrame = itemsToSplit.every((item) => {
           const currentItem = currentItemsById[item.id]
@@ -199,7 +226,7 @@ export function splitItemAtFrames(id: string, splitFrames: number[]): number {
         const frameSplitResults = itemsToSplit
           .map((item) => ({
             originalId: item.id,
-            originalLinkedGroupId: item.linkedGroupId,
+            originalLinkedGroupId: useItemsStore.getState().itemById[item.id]?.linkedGroupId,
             result: useItemsStore.getState()._splitItem(item.id, frame),
           }))
           .filter((entry): entry is SplitResultEntry => entry.result !== null)
@@ -208,11 +235,18 @@ export function splitItemAtFrames(id: string, splitFrames: number[]): number {
           continue
         }
 
-        applySplitBookkeeping(frameSplitResults)
+        const splitItemIds = new Set(frameSplitResults.map((entry) => entry.originalId))
+        applySplitBookkeeping(frameSplitResults, {
+          unsplitLinkedItems: linkedItems.filter((item) => !splitItemIds.has(item.id)),
+          splitFrame: frame,
+        })
 
         splitCount++
 
         for (const entry of frameSplitResults) {
+          if (!rightIdsByOriginalId.has(entry.originalId)) {
+            rightIdsByOriginalId.set(entry.originalId, [])
+          }
           rightIdsByOriginalId.get(entry.originalId)?.push(entry.result.rightItem.id)
           applyTransitionRepairs([entry.result.leftItem.id, entry.result.rightItem.id])
         }

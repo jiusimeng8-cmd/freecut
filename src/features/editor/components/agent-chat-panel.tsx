@@ -1,124 +1,99 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  AlertTriangle,
-  Check,
-  CircleDashed,
-  Info,
-  Loader2,
-  Play,
-  Send,
-  Sparkles,
-  Trash2,
-  X,
-} from 'lucide-react'
+import { Check, KeyRound, Loader2, Send, Sparkles, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useProjectStore } from '@/features/editor/deps/projects'
 import { cn } from '@/shared/ui/cn'
-import { useAgentStore, type PlanStepState } from '../agent'
+import {
+  isCloudMcpConfigured,
+  useCloudMcpConfigStore,
+} from '@/shared/state/cloud-mcp-config-store'
+import { useAgentStore } from '../agent'
+import { CloudAgentSettingsPopover } from './cloud-agent-settings-popover'
+import { useCloudAiSettingsStore } from '@/shared/state/cloud-ai-settings-store'
 
-const SUGGESTIONS: { key: string; text: string }[] = [
-  { key: 'silence', text: 'Remove the silences' },
-  { key: 'fillers', text: 'Remove filler words' },
-  { key: 'title', text: 'Add a title that says Hello' },
-  { key: 'split', text: 'Split at the playhead' },
+const SUGGESTIONS = [
+  '删除时间线中的静音',
+  '删除口头语',
+  '在播放头位置添加标题',
+  '在播放头位置分割片段',
 ]
 
-function StepIcon({ status }: { status: PlanStepState['status'] }) {
-  switch (status) {
-    case 'running':
-      return <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
-    case 'done':
-      return <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-    case 'error':
-      return <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" />
-    default:
-      return <CircleDashed className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-  }
-}
+function LocalRunCard() {
+  const run = useAgentStore((state) => state.localRun)
+  const phase = useAgentStore((state) => state.phase)
+  const approve = useAgentStore((state) => state.approve)
+  const cancel = useAgentStore((state) => state.cancel)
 
-const PlanCard = memo(function PlanCard() {
-  const { t } = useTranslation()
-  const plan = useAgentStore((s) => s.plan)
-  const phase = useAgentStore((s) => s.phase)
-  const runPlan = useAgentStore((s) => s.runPlan)
-  const dismissPlan = useAgentStore((s) => s.dismissPlan)
+  if (!run) return null
 
-  if (!plan || plan.length === 0) return null
-
-  const awaiting = phase === 'awaiting-confirm'
-  const running = phase === 'running'
-  const hasHandoff = plan.some((step) => step.handoff)
-
-  return (
-    <div className="rounded-lg border border-border bg-secondary/30 p-2.5">
-      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-        {t('agent.plan.title', { defaultValue: 'Plan' })}
+  if (phase === 'running') {
+    return (
+      <div className="flex items-start gap-2 rounded-md border border-border bg-secondary/30 p-2.5">
+        <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
+        <p className="text-xs text-foreground">本地 Agent 正在读取项目并协调工具。</p>
       </div>
-      <ol className="space-y-1.5">
-        {plan.map((step, index) => (
-          <li key={index} className="flex items-start gap-2 text-xs">
-            <StepIcon status={step.status} />
-            <div className="min-w-0">
-              <span className="text-foreground">{step.summary}</span>
-              {step.status === 'error' && step.result && (
-                <span className="block text-[11px] text-destructive">{step.result}</span>
-              )}
-            </div>
-          </li>
-        ))}
-      </ol>
+    )
+  }
 
-      {hasHandoff && awaiting && (
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          {t('agent.plan.handoffNote', {
-            defaultValue: 'Some steps open a review you confirm.',
-          })}
-        </p>
-      )}
-
-      {awaiting && (
-        <div className="mt-2.5 flex items-center gap-1.5">
-          <Button size="sm" className="h-7 flex-1 gap-1.5" onClick={() => void runPlan()}>
-            <Play className="h-3.5 w-3.5" />
-            {t('agent.plan.run', { defaultValue: 'Run' })}
+  if (phase === 'waiting-approval') {
+    return (
+      <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5">
+        <p className="text-xs text-foreground">已准备好需要修改时间线的操作，正在等待本地审批。</p>
+        {run.approval && (
+          <p className="mt-1 text-[11px] text-muted-foreground">{run.approval.name}</p>
+        )}
+        <div className="mt-2 flex items-center gap-1.5">
+          <Button size="sm" className="h-7 flex-1 gap-1.5" onClick={() => void approve()}>
+            <Check className="h-3.5 w-3.5" />
+            确认并执行
           </Button>
           <Button
             size="sm"
             variant="ghost"
             className="h-7 gap-1.5 text-muted-foreground"
-            onClick={dismissPlan}
+            onClick={cancel}
           >
             <X className="h-3.5 w-3.5" />
-            {t('agent.plan.discard', { defaultValue: 'Discard' })}
+            取消
           </Button>
         </div>
-      )}
-      {running && (
-        <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          {t('agent.plan.running', { defaultValue: 'Running…' })}
-        </p>
-      )}
-    </div>
-  )
-})
+      </div>
+    )
+  }
+
+  if (phase === 'approving') {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-border bg-secondary/30 p-2.5 text-xs text-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+        正在提交本地审批并执行工具。
+      </div>
+    )
+  }
+
+  return null
+}
 
 export const AgentChatPanel = memo(function AgentChatPanel() {
-  const { t } = useTranslation()
-  const supported = useAgentStore((s) => s.supported)
-  const messages = useAgentStore((s) => s.messages)
-  const phase = useAgentStore((s) => s.phase)
-  const modelStatus = useAgentStore((s) => s.modelStatus)
-  const loadPercent = useAgentStore((s) => s.loadPercent)
-  const loadError = useAgentStore((s) => s.loadError)
-  const submit = useAgentStore((s) => s.submit)
-  const cancel = useAgentStore((s) => s.cancel)
-  const clearChat = useAgentStore((s) => s.clearChat)
+  const messages = useAgentStore((state) => state.messages)
+  const phase = useAgentStore((state) => state.phase)
+  const modelStatus = useAgentStore((state) => state.modelStatus)
+  const loadError = useAgentStore((state) => state.loadError)
+  const submit = useAgentStore((state) => state.submit)
+  const cancel = useAgentStore((state) => state.cancel)
+  const clearChat = useAgentStore((state) => state.clearChat)
+  const loadProjectConversation = useAgentStore((state) => state.loadProjectConversation)
+  const projectId = useProjectStore((state) => state.currentProject?.id ?? null)
+  const baseUrl = useCloudMcpConfigStore((state) => state.baseUrl)
+  const businessKey = useCloudMcpConfigStore((state) => state.businessKey)
 
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const busy = phase !== 'idle'
+  const configured = isCloudMcpConfigured({ baseUrl, businessKey })
+
+  useEffect(() => {
+    if (projectId) void loadProjectConversation(projectId)
+  }, [loadProjectConversation, projectId])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
@@ -144,41 +119,59 @@ export const AgentChatPanel = memo(function AgentChatPanel() {
     [busy, input, send],
   )
 
-  if (!supported) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-        <Sparkles className="h-6 w-6 text-muted-foreground" />
-        <p className="text-sm font-medium text-foreground">
-          {t('agent.unsupported.title', { defaultValue: 'Assistant unavailable' })}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {t('agent.unsupported.body', {
-            defaultValue:
-              'The on-device assistant needs WebGPU. Try a recent Chrome or Edge browser.',
-          })}
-        </p>
-      </div>
-    )
-  }
-
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Transcript */}
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-2.5">
+        <KeyRound className="h-4 w-4 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-foreground">剪好 Agent</p>
+          <p className="truncate text-[10px] text-muted-foreground">
+            {configured ? '本地 Agent Host 已连接' : 'MCP Key 未配置'}
+          </p>
+        </div>
+        <CloudAgentSettingsPopover />
+      </div>
+
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
         {messages.length === 0 && phase === 'idle' && (
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-1.5">
-              {SUGGESTIONS.map((suggestion) => (
-                <button
-                  key={suggestion.key}
-                  type="button"
-                  onClick={() => send(suggestion.text)}
-                  className="rounded-full border border-border bg-secondary/30 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
-                >
-                  {suggestion.text}
-                </button>
-              ))}
+            <div className="flex items-start gap-2.5 border-b border-border pb-3">
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div>
+                <p className="text-xs font-medium text-foreground">
+                  {configured ? '用自然语言协作剪辑' : '连接剪好 MCP'}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {configured
+                    ? 'Agent 在本地管理对话、工具和审批，仅把每轮推理发送到所选模型。'
+                    : '配置 MCP Key 后即可使用剪好 Agent。'}
+                </p>
+              </div>
             </div>
+
+            {!configured ? (
+              <Button
+                size="sm"
+                className="h-8 w-full gap-1.5"
+                onClick={() => useCloudAiSettingsStore.getState().openSettings()}
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                配置剪好 MCP Key
+              </Button>
+            ) : (
+              <div className="grid grid-cols-1 gap-1.5">
+                {SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => send(suggestion)}
+                    className="min-h-8 rounded-md border border-border bg-secondary/20 px-2.5 py-1.5 text-left text-[11px] text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -189,10 +182,10 @@ export const AgentChatPanel = memo(function AgentChatPanel() {
           >
             <div
               className={cn(
-                'max-w-[85%] whitespace-pre-wrap rounded-lg px-2.5 py-1.5 text-xs leading-relaxed',
+                'max-w-[88%] whitespace-pre-wrap rounded-md px-2.5 py-1.5 text-xs leading-relaxed',
                 message.role === 'user'
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary/40 text-foreground',
+                  : 'border border-border bg-secondary/30 text-foreground',
               )}
             >
               {message.content}
@@ -200,78 +193,43 @@ export const AgentChatPanel = memo(function AgentChatPanel() {
           </div>
         ))}
 
-        {phase === 'planning' && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            {modelStatus === 'loading'
-              ? t('agent.status.loadingModel', {
-                  defaultValue: 'Loading on-device model… {{percent}}%',
-                  percent: loadPercent,
-                })
-              : t('agent.status.thinking', { defaultValue: 'Planning your edit…' })}
-          </div>
-        )}
-
-        <PlanCard />
+        <LocalRunCard />
 
         {loadError && phase === 'idle' && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-2.5 text-[11px] text-destructive">
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 text-[11px] text-destructive">
             {loadError}
           </div>
         )}
       </div>
 
-      {/* Composer */}
       <div className="shrink-0 border-t border-border p-2.5">
-        {modelStatus === 'loading' && (
-          <div className="mb-2 h-1 overflow-hidden rounded-full bg-secondary">
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-300"
-              style={{ width: `${loadPercent}%` }}
-            />
-          </div>
-        )}
         <div className="flex items-end gap-1.5">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-9 w-9 shrink-0 text-muted-foreground"
-                aria-label={t('agent.empty.infoLabel', { defaultValue: 'About this assistant' })}
-              >
-                <Info className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" side="top" className="w-64 p-3">
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {t('agent.empty.intro', {
-                  defaultValue:
-                    'Ask me to edit your timeline in plain language. I run fully on-device — nothing leaves your computer. I propose a plan first; you confirm before anything changes.',
-                })}
-              </p>
-            </PopoverContent>
-          </Popover>
           <textarea
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            placeholder={t('agent.composer.placeholder', {
-              defaultValue: 'Ask the assistant to edit…',
-            })}
-            className="max-h-28 min-h-[2.25rem] flex-1 resize-none rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+            placeholder={configured ? '描述你想完成的剪辑工作' : '请先配置剪好 MCP Key'}
+            disabled={!configured || busy}
+            className="max-h-28 min-h-9 flex-1 resize-none rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary/50 disabled:cursor-not-allowed disabled:opacity-60"
           />
-          {phase === 'planning' ? (
-            <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={cancel}>
+          {phase === 'running' ? (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-9 w-9 shrink-0"
+              onClick={cancel}
+              aria-label="停止请求"
+            >
               <X className="h-4 w-4" />
             </Button>
           ) : (
             <Button
               size="icon"
               className="h-9 w-9 shrink-0"
-              disabled={busy || !input.trim()}
+              disabled={busy || !configured || !input.trim()}
               onClick={() => send(input)}
+              aria-label="发送"
             >
               <Send className="h-4 w-4" />
             </Button>
@@ -284,12 +242,15 @@ export const AgentChatPanel = memo(function AgentChatPanel() {
               size="sm"
               className="h-6 gap-1 px-2 text-[11px] text-muted-foreground"
               onClick={clearChat}
-              disabled={phase === 'running'}
+              disabled={busy}
             >
               <Trash2 className="h-3 w-3" />
-              {t('agent.clear', { defaultValue: 'Clear' })}
+              清空当前视图
             </Button>
           </div>
+        )}
+        {modelStatus === 'loading' && (
+          <p className="mt-1.5 text-[10px] text-muted-foreground">正在检查本地 Agent Host</p>
         )}
       </div>
     </div>

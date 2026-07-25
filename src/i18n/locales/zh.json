@@ -87,20 +87,38 @@
       "uiSoundVoice": "音效主题",
       "uiSoundPreview": "试听"
     },
-    "ai": {
-      "captionSampleInterval": "字幕采样间隔",
-      "captionSampleIntervalDescription": "\"使用 AI 分析\"采样一帧用于字幕的频率。",
-      "seconds": "秒",
-      "frames": "帧",
-      "unitSec": "秒",
-      "unitFrames": "帧",
-      "enterIntervalAboveZero": "请输入大于零的间隔。",
-      "captionEstimate": "在 {{fps}} fps 下每 1 分钟片段约 {{sceneCount}} 个{{scenes}}",
-      "scene_one": "场景",
-      "scene_other": "场景",
-      "captionIntervalHint": "{{estimate}}。间隔越小场景越密集，但生成耗时越长。",
-      "defaultCaptionStyle": "默认字幕样式",
-      "defaultCaptionStyleDescription": "应用于由转录或 AI 字幕生成的字幕的样式。"
+    "desktop": {
+      "title": "FreeCut 桌面版",
+      "version": "版本 {{version}}",
+      "loading": "正在读取版本...",
+      "updateFailed": "FreeCut 更新失败",
+      "status": {
+        "disabled": "更新功能仅在已安装版本中可用。",
+        "idle": "可以检查更新。",
+        "checking": "正在检查更新...",
+        "available": "发现版本 {{version}}。",
+        "downloading": "正在下载更新：{{percent}}%",
+        "downloaded": "版本 {{version}} 已可安装。",
+        "upToDate": "FreeCut 已是最新版本。",
+        "installing": "正在重启并安装更新...",
+        "error": "未能完成更新检查。"
+      },
+      "actions": {
+        "check": "检查更新",
+        "checking": "检查中",
+        "download": "下载更新",
+        "downloading": "下载中",
+        "restartInstall": "重启并安装",
+        "installing": "安装中",
+        "later": "稍后"
+      },
+      "diagnostics": {
+        "title": "桌面诊断",
+        "export": "导出",
+        "exporting": "导出中",
+        "exported": "诊断信息已导出",
+        "exportFailed": "无法导出诊断信息"
+      }
     },
     "timeline": {
       "snapByDefault": "默认吸附",
@@ -126,8 +144,6 @@
       "deleteProxies": "删除代理",
       "deleteProxiesDescription": "移除为本项目生成的代理视频",
       "deleted": "已删除",
-      "localAi": "本地 AI",
-      "localAiDescription": "卸载常驻运行时或清除已缓存的模型下载。",
       "clearCacheConfirmTitle": "清除项目缓存？",
       "clearCacheConfirmDescription": "这将删除当前项目（{{count}} 个媒体项）的缓存波形、视频缩略图条、GIF 帧和已解码音频。需要时会自动重新生成。你的项目数据、媒体文件、缩略图和代理不会受到影响。",
       "clearCache": "清除缓存"

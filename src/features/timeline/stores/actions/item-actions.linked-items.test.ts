@@ -1,7 +1,13 @@
 // @vitest-environment node
 
 import { beforeEach, describe, expect, it } from 'vite-plus/test'
-import type { AudioItem, TextItem, TimelineTrack, VideoItem } from '@/types/timeline'
+import type {
+  AudioItem,
+  SubtitleSegmentItem,
+  TextItem,
+  TimelineTrack,
+  VideoItem,
+} from '@/types/timeline'
 import { useItemsStore } from '../items-store'
 import { useTransitionsStore } from '../transitions-store'
 import { useKeyframesStore } from '../keyframes-store'
@@ -17,6 +23,7 @@ import {
   removeItems,
   reverseItems,
   rippleDeleteItems,
+  splitAllItemsAtFrame,
   splitItem,
   splitItemAtFrames,
   unlinkItems,
@@ -69,6 +76,38 @@ function makeTextItem(overrides: Partial<TextItem> = {}): TextItem {
     textRole: 'caption',
     ...overrides,
   }
+}
+
+function makeSubtitleItem(id: string, from: number, durationInFrames: number): SubtitleSegmentItem {
+  return {
+    id,
+    type: 'subtitle',
+    trackId: 'caption-track',
+    from,
+    durationInFrames,
+    label: 'Transcript',
+    color: '#ffffff',
+    mediaId: 'media-1',
+    linkedGroupId: 'group-1',
+    source: {
+      type: 'transcript',
+      mediaId: 'media-1',
+      clipId: 'video-1',
+    },
+    cues: [
+      {
+        id: `${id}-cue`,
+        startSeconds: 0,
+        endSeconds: durationInFrames / 30,
+        text: id,
+      },
+    ],
+  }
+}
+
+function subtitleSourceClipId(itemId: string): string | null {
+  const item = useItemsStore.getState().itemById[itemId]
+  return item?.type === 'subtitle' && 'clipId' in item.source ? item.source.clipId : null
 }
 
 function makeTrack(
@@ -129,6 +168,120 @@ describe('linked timeline items', () => {
     expect(rightVideo?.linkedGroupId).toBe(rightAudio?.linkedGroupId)
     expect(leftVideo?.linkedGroupId).not.toBe(rightVideo?.linkedGroupId)
     expect(useSelectionStore.getState().selectedItemIds).toEqual(['video-1', 'audio-1'])
+  })
+
+  it('splits all synchronized items without orphaning segmented subtitles', () => {
+    useItemsStore
+      .getState()
+      .setItems([
+        makeVideoItem(),
+        makeAudioItem(),
+        makeSubtitleItem('subtitle-before', 5, 10),
+        makeSubtitleItem('subtitle-crossing', 25, 10),
+        makeSubtitleItem('subtitle-after', 40, 10),
+      ])
+
+    expect(splitAllItemsAtFrame(30)).toBe(1)
+
+    const items = useItemsStore.getState().items
+    const videos = items
+      .filter((item) => item.type === 'video')
+      .sort((left, right) => left.from - right.from)
+    const audios = items
+      .filter((item) => item.type === 'audio')
+      .sort((left, right) => left.from - right.from)
+    expect(videos.map((item) => [item.from, item.durationInFrames])).toEqual([
+      [0, 30],
+      [30, 30],
+    ])
+    expect(audios.map((item) => [item.from, item.durationInFrames])).toEqual([
+      [0, 30],
+      [30, 30],
+    ])
+    expect(videos[0]?.linkedGroupId).toBe(audios[0]?.linkedGroupId)
+    expect(videos[1]?.linkedGroupId).toBe(audios[1]?.linkedGroupId)
+    expect(useItemsStore.getState().itemById['subtitle-before']?.linkedGroupId).toBe(
+      videos[0]?.linkedGroupId,
+    )
+    expect(useItemsStore.getState().itemById['subtitle-crossing']?.linkedGroupId).toBe(
+      videos[0]?.linkedGroupId,
+    )
+    expect(useItemsStore.getState().itemById['subtitle-after']?.linkedGroupId).toBe(
+      videos[1]?.linkedGroupId,
+    )
+    expect(subtitleSourceClipId('subtitle-before')).toBe(videos[0]?.id)
+    expect(subtitleSourceClipId('subtitle-crossing')).toBe(videos[0]?.id)
+    expect(subtitleSourceClipId('subtitle-after')).toBe(videos[1]?.id)
+    expect(useTimelineCommandStore.getState().getLastCommandType()).toBe('SPLIT_ALL_ITEMS_AT_FRAME')
+    expect(useTimelineCommandStore.getState().undoStack).toHaveLength(1)
+
+    useTimelineCommandStore.getState().undo()
+    expect(useItemsStore.getState().items).toHaveLength(5)
+    expect(useTimelineCommandStore.getState().undoStack).toHaveLength(0)
+    useTimelineCommandStore.getState().redo()
+    expect(useItemsStore.getState().items).toHaveLength(7)
+    expect(useTimelineCommandStore.getState().undoStack).toHaveLength(1)
+  })
+
+  it('multi-splits synchronized items and relinks subtitles at every cut', () => {
+    useItemsStore
+      .getState()
+      .setItems([
+        makeVideoItem(),
+        makeAudioItem(),
+        makeSubtitleItem('subtitle-left', 5, 5),
+        makeSubtitleItem('subtitle-middle', 25, 5),
+        makeSubtitleItem('subtitle-crossing', 35, 10),
+        makeSubtitleItem('subtitle-right', 45, 5),
+      ])
+
+    expect(splitItemAtFrames('video-1', [20, 40])).toBe(2)
+
+    const items = useItemsStore.getState().items
+    const videos = items
+      .filter((item) => item.type === 'video')
+      .sort((left, right) => left.from - right.from)
+    const audios = items
+      .filter((item) => item.type === 'audio')
+      .sort((left, right) => left.from - right.from)
+    expect(videos.map((item) => [item.from, item.durationInFrames])).toEqual([
+      [0, 20],
+      [20, 20],
+      [40, 20],
+    ])
+    expect(audios.map((item) => [item.from, item.durationInFrames])).toEqual([
+      [0, 20],
+      [20, 20],
+      [40, 20],
+    ])
+    for (let index = 0; index < videos.length; index += 1) {
+      expect(videos[index]?.linkedGroupId).toBe(audios[index]?.linkedGroupId)
+    }
+    expect(useItemsStore.getState().itemById['subtitle-left']?.linkedGroupId).toBe(
+      videos[0]?.linkedGroupId,
+    )
+    expect(useItemsStore.getState().itemById['subtitle-middle']?.linkedGroupId).toBe(
+      videos[1]?.linkedGroupId,
+    )
+    expect(useItemsStore.getState().itemById['subtitle-crossing']?.linkedGroupId).toBe(
+      videos[1]?.linkedGroupId,
+    )
+    expect(useItemsStore.getState().itemById['subtitle-right']?.linkedGroupId).toBe(
+      videos[2]?.linkedGroupId,
+    )
+    expect(subtitleSourceClipId('subtitle-left')).toBe(videos[0]?.id)
+    expect(subtitleSourceClipId('subtitle-middle')).toBe(videos[1]?.id)
+    expect(subtitleSourceClipId('subtitle-crossing')).toBe(videos[1]?.id)
+    expect(subtitleSourceClipId('subtitle-right')).toBe(videos[2]?.id)
+    expect(useTimelineCommandStore.getState().getLastCommandType()).toBe('SPLIT_ITEM_MULTI')
+    expect(useTimelineCommandStore.getState().undoStack).toHaveLength(1)
+
+    useTimelineCommandStore.getState().undo()
+    expect(useItemsStore.getState().items).toHaveLength(6)
+    expect(useTimelineCommandStore.getState().undoStack).toHaveLength(0)
+    useTimelineCommandStore.getState().redo()
+    expect(useItemsStore.getState().items).toHaveLength(10)
+    expect(useTimelineCommandStore.getState().undoStack).toHaveLength(1)
   })
 
   it('reverses synchronized video/audio items together even when linked selection is disabled', () => {

@@ -324,33 +324,6 @@
       "startImport": "İçe Aktarmayı Başlat"
     },
     "settings": {
-      "localInference": {
-        "noRuntimes": "Etkin veya bellekte kalan yerel çıkarım çalışma zamanı yok.",
-        "activeJobs_one": "{{count}} etkin iş",
-        "activeJobs_other": "{{count}} etkin iş",
-        "unloadedToast_one": "{{count}} yerel çalışma zamanı boşaltıldı",
-        "unloadedToast_other": "{{count}} yerel çalışma zamanı boşaltıldı",
-        "unloadFailed": "Yerel çalışma zamanları boşaltılamadı",
-        "unloadLabel": "Yerel Modelleri Boşalt",
-        "unloading": "Boşaltılıyor...",
-        "unloaded": "Boşaltıldı",
-        "unload": "Boşalt"
-      },
-      "modelCache": {
-        "title": "Yerel YZ Model Önbelleği",
-        "description": "Önbelleğe alınmış model boyutunu gösterir. Bir modeli temizlemek, bir sonraki kullanımda yeniden indirmeyi zorlar.",
-        "inspectFailed": "Yerel model önbelleği incelenemedi",
-        "clearedToast": "{{label}} temizlendi",
-        "alreadyEmptyToast": "{{label}} zaten boştu",
-        "clearFailed": "{{label}} temizlenemedi",
-        "checking": "Kontrol ediliyor...",
-        "refresh": "Yenile",
-        "inspectionUnavailable": "Bu ortamda önbellek incelemesi kullanılamıyor.",
-        "unavailable": "Kullanılamıyor",
-        "approxSize": "Yaklaşık {{size}}",
-        "cleared": "Temizlendi",
-        "clear": "Temizle"
-      },
       "hotkeys": {
         "title": "Klavye Kısayolları",
         "subtitle": "— bir komut seçin, sonra yeni bir kombinasyon kaydedin",

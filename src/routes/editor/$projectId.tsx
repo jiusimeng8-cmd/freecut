@@ -1,4 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { forgetLastEditorProjectId } from '@/shared/projects/last-editor-project'
 
 export const Route = createFileRoute('/editor/$projectId')({
   // Editor loader data is tiny and migration state must be fresh on reopen.
@@ -14,7 +15,8 @@ export const Route = createFileRoute('/editor/$projectId')({
     const project = await getProject(params.projectId)
 
     if (!project) {
-      throw new Error(`Project not found: ${params.projectId}`)
+      forgetLastEditorProjectId(params.projectId)
+      throw redirect({ to: '/projects', replace: true })
     }
 
     const storedSchemaVersion = project.schemaVersion ?? 1

@@ -6,6 +6,8 @@
 export {
   createClassicTrack,
   createDefaultAdjustmentItem,
+  buildDroppedMediaEntriesFromImportedMedia,
+  buildDroppedMediaTimelineItems,
   createScrubThrottleState,
   shouldCommitScrubFrame,
   createDefaultShapeItem,
@@ -15,13 +17,14 @@ export {
   findNearestAvailableSpace,
   getDefaultActiveTrackId,
   getDefaultGeneratedLayerDurationInFrames,
+  getDroppedMediaDurationInFrames,
   getTrackKind,
+  planTrackMediaDropPlacements,
+  resolveSourceEditTrackTargets,
   resolveEffectiveTrackStates,
   getMaxTransitionDurationForHandles,
   resolveTransitionTargetFromSelection,
   searchTimelineTranscript,
   timelineToSourceFrames,
   sourceToTimelineFrames,
-  linkItems,
 } from './timeline-contract'
-export type { TranscriptSearchMatch } from './timeline-contract'

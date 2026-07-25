@@ -12,6 +12,8 @@ const mediaLibraryService = vi.hoisted(() => ({
   getMedia: vi.fn(),
   getMediaFile: vi.fn(),
 }))
+const mockGetDesktopFileUrl = vi.hoisted(() => vi.fn())
+const mockGetMediaSourceHandle = vi.hoisted(() => vi.fn())
 
 // Mock dependencies used by the underlying media resolver implementation.
 vi.mock('@/features/media-library/services/media-library-service', async () => {
@@ -25,6 +27,14 @@ vi.mock('@/features/media-library/services/media-library-service', async () => {
 const mockValidateMediaHandle = vi.fn()
 vi.mock('@/infrastructure/storage', () => ({
   validateMediaHandle: (...args: unknown[]) => mockValidateMediaHandle(...args),
+}))
+
+vi.mock('@/infrastructure/storage/desktop-file-system-access', () => ({
+  getDesktopFileUrl: mockGetDesktopFileUrl,
+}))
+
+vi.mock('@/features/media-library/deps/storage', () => ({
+  getMediaSourceHandle: mockGetMediaSourceHandle,
 }))
 
 vi.mock('@/features/media-library/services/proxy-service', () => ({
@@ -49,6 +59,8 @@ let blobUrlCounter = 0
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockGetDesktopFileUrl.mockReset().mockResolvedValue(null)
+  mockGetMediaSourceHandle.mockReset().mockResolvedValue(null)
   blobUrlManager.releaseAll()
   cleanupBlobUrls()
   blobUrlCounter = 0
@@ -119,6 +131,45 @@ describe('resolveMediaUrl', () => {
       id: 'media-1',
       fileName: 'video.mp4',
     })
+  })
+
+  it('uses the Desktop Range URL without materializing the source as a Blob', async () => {
+    const fileHandle = {} as FileSystemFileHandle
+    ;(mediaLibraryService.getMedia as Mock).mockResolvedValue({
+      id: 'media-1',
+      fileName: 'large.mp4',
+      storageType: 'handle',
+      fileHandle,
+    })
+    mockGetDesktopFileUrl.mockResolvedValue('freecut-media://file/workspace-token/large.mp4')
+
+    const url = await resolveMediaUrl('media-1')
+
+    expect(url).toBe('freecut-media://file/workspace-token/large.mp4')
+    expect(mockGetDesktopFileUrl).toHaveBeenCalledWith(fileHandle)
+    expect(mediaLibraryService.getMediaFile).not.toHaveBeenCalled()
+    expect(blobUrlManager.get('media-1')).toBe(url)
+    expect(mockMarkMediaHealthy).toHaveBeenCalledWith('media-1')
+  })
+
+  it('uses the Desktop Range URL for media copied into the workspace', async () => {
+    const fileHandle = {} as FileSystemFileHandle
+    ;(mediaLibraryService.getMedia as Mock).mockResolvedValue({
+      id: 'media-1',
+      fileName: 'workspace-large.mp4',
+      storageType: 'workspace',
+    })
+    mockGetMediaSourceHandle.mockResolvedValue(fileHandle)
+    mockGetDesktopFileUrl.mockResolvedValue(
+      'freecut-media://file/workspace-token/media/media-1/workspace-large.mp4',
+    )
+
+    const url = await resolveMediaUrl('media-1')
+
+    expect(url).toBe('freecut-media://file/workspace-token/media/media-1/workspace-large.mp4')
+    expect(mockGetMediaSourceHandle).toHaveBeenCalledWith('media-1')
+    expect(mockGetDesktopFileUrl).toHaveBeenCalledWith(fileHandle)
+    expect(mediaLibraryService.getMediaFile).not.toHaveBeenCalled()
   })
 
   it('returns empty string when media not found', async () => {

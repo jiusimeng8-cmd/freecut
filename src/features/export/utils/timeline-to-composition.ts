@@ -41,6 +41,7 @@ export function convertTimelineToComposition(
   backgroundColor?: string,
   busAudioEq?: AudioEqSettings,
   masterBusDb?: number,
+  compositions?: CompositionInputProps['compositions'],
 ): CompositionInputProps {
   items = items.map((item) =>
     item.type === 'video' ? resolveReverseConformedVideoItem(item, fps, { mode: 'export' }) : item,
@@ -247,6 +248,7 @@ export function convertTimelineToComposition(
     backgroundColor,
     busAudioEq,
     masterBusDb,
+    compositions,
   }
 }
 

@@ -78,7 +78,8 @@ class BlobUrlManager {
    * Because no Blob is registered in the object-url registry, consumers that
    * build a mediabunny input from this URL fall through to UrlSource — i.e.
    * the media is range-streamed over HTTP instead of held fully in memory.
-   * Reference-counted like acquire(); never used by the in-app flows.
+   * Reference-counted like acquire(); callers provide a URL that the browser
+   * or a worker can fetch directly.
    */
   registerUrl(mediaId: string, url: string): string {
     const existing = this.entries.get(mediaId)

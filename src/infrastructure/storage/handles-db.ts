@@ -14,6 +14,10 @@
  */
 
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
+import {
+  desktopDescriptorToHandle,
+  desktopHandleToDescriptor,
+} from '@/infrastructure/storage/desktop-file-system-access'
 import { createLogger } from '@/shared/logging/logger'
 
 const logger = createLogger('HandlesDB')
@@ -80,8 +84,36 @@ function compoundKey(kind: HandleKind, id: string): string {
   return `${kind}:${id}`
 }
 
+function isDesktopHandlesStore(): boolean {
+  return typeof window !== 'undefined' && window.freecutDesktop?.app.isDesktop === true
+}
+
+function fromDesktopEntry(
+  kind: HandleKind,
+  entry: Awaited<ReturnType<NonNullable<Window['freecutDesktop']>['handles']['list']>>[number],
+): HandleRecord {
+  const handle = desktopDescriptorToHandle(entry.handle)
+  return {
+    key: compoundKey(kind, entry.id),
+    kind,
+    id: entry.id,
+    handle,
+    name: handle.name,
+    pickedAt: entry.pickedAt,
+    lastSeenPath: entry.lastSeenPath,
+    lastSeenSize: entry.lastSeenSize,
+    lastSeenMtime: entry.lastSeenMtime,
+    activeWorkspaceId: entry.activeWorkspaceId,
+  }
+}
+
 export async function getHandle(kind: HandleKind, id: string): Promise<HandleRecord | null> {
   try {
+    if (isDesktopHandlesStore()) {
+      const entries = await window.freecutDesktop!.handles.list(kind)
+      const entry = entries.find((candidate) => candidate.id === id)
+      return entry ? fromDesktopEntry(kind, entry) : null
+    }
     const db = await getHandlesDB()
     const record = await db.get(HANDLES_STORE, compoundKey(kind, id))
     return record ?? null
@@ -92,6 +124,19 @@ export async function getHandle(kind: HandleKind, id: string): Promise<HandleRec
 }
 
 export async function saveHandle(record: Omit<HandleRecord, 'key'>): Promise<void> {
+  if (isDesktopHandlesStore()) {
+    await window.freecutDesktop!.handles.save({
+      kind: record.kind,
+      id: record.id,
+      handle: desktopHandleToDescriptor(record.handle),
+      pickedAt: record.pickedAt,
+      lastSeenPath: record.lastSeenPath,
+      lastSeenSize: record.lastSeenSize,
+      lastSeenMtime: record.lastSeenMtime,
+      activeWorkspaceId: record.activeWorkspaceId,
+    })
+    return
+  }
   const db = await getHandlesDB()
   const full: HandleRecord = {
     ...record,
@@ -101,11 +146,19 @@ export async function saveHandle(record: Omit<HandleRecord, 'key'>): Promise<voi
 }
 
 export async function deleteHandle(kind: HandleKind, id: string): Promise<void> {
+  if (isDesktopHandlesStore()) {
+    await window.freecutDesktop!.handles.delete(kind, id)
+    return
+  }
   const db = await getHandlesDB()
   await db.delete(HANDLES_STORE, compoundKey(kind, id))
 }
 
 async function listHandlesByKind(kind: HandleKind): Promise<HandleRecord[]> {
+  if (isDesktopHandlesStore()) {
+    const entries = await window.freecutDesktop!.handles.list(kind)
+    return entries.map((entry) => fromDesktopEntry(kind, entry))
+  }
   const db = await getHandlesDB()
   return db.getAllFromIndex(HANDLES_STORE, 'kind', kind)
 }

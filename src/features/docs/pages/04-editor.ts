@@ -39,7 +39,7 @@ const page = {
             ['Shapes', 'Generated shape items'],
             ['Effects', 'GPU effects for the selected clip'],
             ['Transitions', 'Transitions to drag onto cuts'],
-            ['AI', 'Local text to speech and music generation'],
+            ['AI', 'Cloud Agent chat for structured timeline editing commands'],
           ],
         },
         {
@@ -69,7 +69,7 @@ const page = {
         {
           kind: 'list',
           items: [
-            'Open **Settings** for general, timeline, AI, and storage preferences.',
+            'Open **Settings** for general, timeline, and storage preferences.',
             'Open **Keyboard Shortcuts** to search commands, rebind keys, and import or export presets.',
             'Save often with `Ctrl+S`; auto-save can also run on an interval you set in Settings.',
             'Undo and Redo (`Ctrl+Z` and `Ctrl+Shift+Z`) cover timeline edits when something goes wrong.',

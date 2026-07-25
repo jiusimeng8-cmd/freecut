@@ -21,6 +21,16 @@ export function rememberLastEditorProjectId(projectId: string): void {
   }
 }
 
+export function forgetLastEditorProjectId(projectId: string): void {
+  try {
+    if (window.localStorage.getItem(LAST_EDITOR_PROJECT_ID_KEY) === projectId) {
+      window.localStorage.removeItem(LAST_EDITOR_PROJECT_ID_KEY)
+    }
+  } catch {
+    // Ignore restricted-storage failures so a missing project can still redirect.
+  }
+}
+
 function getLastEditorProjectId(): string | undefined {
   try {
     return window.localStorage.getItem(LAST_EDITOR_PROJECT_ID_KEY) ?? undefined

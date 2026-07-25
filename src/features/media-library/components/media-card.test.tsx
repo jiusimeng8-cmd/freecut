@@ -7,7 +7,6 @@ const mediaLibraryServiceMocks = vi.hoisted(() => ({
   getThumbnailBlobUrl: vi.fn(),
   getMediaFile: vi.fn(),
   getMediaBlobUrl: vi.fn(),
-  updateMediaCaptions: vi.fn(),
 }))
 
 const proxyServiceMocks = vi.hoisted(() => ({
@@ -20,14 +19,7 @@ const proxyServiceMocks = vi.hoisted(() => ({
 }))
 
 const mediaTranscriptionServiceMocks = vi.hoisted(() => ({
-  transcribeMedia: vi.fn(),
   deleteTranscript: vi.fn(),
-  cancelTranscription: vi.fn(),
-}))
-
-const mediaTranscriptionRunnerMocks = vi.hoisted(() => ({
-  runMediaTranscriptionJob: vi.fn(),
-  cancelMediaTranscriptionJob: vi.fn(),
 }))
 
 const subtitleSidecarServiceMocks = vi.hoisted(() => ({
@@ -69,29 +61,13 @@ const mediaStoreState = vi.hoisted(() => ({
   interpolationStatus: new Map<string, 'generating' | 'ready' | 'error'>(),
   upscaleStatus: new Map<string, 'generating' | 'ready' | 'error'>(),
   currentProjectId: 'test-project' as string | null,
-  transcriptStatus: new Map<string, 'idle' | 'queued' | 'transcribing' | 'ready' | 'error'>(),
-  transcriptProgress: new Map(),
-  taggingMediaIds: new Set<string>(),
+  transcriptStatus: new Map<string, 'idle' | 'ready' | 'error'>(),
   setProxyStatus: vi.fn(),
   clearProxyStatus: vi.fn(),
   setTranscriptStatus: vi.fn(),
-  setTranscriptProgress: vi.fn(),
-  clearTranscriptProgress: vi.fn(),
-  setTaggingMedia: vi.fn(),
-  updateMediaCaptions: vi.fn(),
   showNotification: vi.fn(),
   markMediaBroken: vi.fn(),
   openMissingMediaDialog: vi.fn(),
-  analysisProgress: null as null | { total: number; completed: number; cancelRequested: boolean },
-  beginAnalysisRun: vi.fn(),
-  incrementAnalysisCompleted: vi.fn(),
-  requestAnalysisCancel: vi.fn(),
-  endAnalysisRun: vi.fn(),
-}))
-
-const analysisMocks = vi.hoisted(() => ({
-  captionVideo: vi.fn(),
-  captionImage: vi.fn(),
 }))
 
 const editorStoreState = vi.hoisted(() => ({
@@ -137,37 +113,6 @@ vi.mock('@/components/ui/context-menu', () => ({
   ContextMenuSubContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('./transcribe-dialog', () => ({
-  TranscribeDialog: ({
-    open,
-    onStart,
-    onCancel,
-  }: {
-    open: boolean
-    onStart: (values: { model: string; quantization: string; language: string }) => void
-    onCancel: () => void
-  }) =>
-    open ? (
-      <div data-testid="transcribe-dialog">
-        <button
-          type="button"
-          onClick={() =>
-            onStart({
-              model: 'whisper-base',
-              quantization: 'hybrid',
-              language: '',
-            })
-          }
-        >
-          Start Transcription
-        </button>
-        <button type="button" onClick={() => onCancel()}>
-          Stop Transcription
-        </button>
-      </div>
-    ) : null,
-}))
-
 vi.mock('./media-info-popover', () => ({
   MediaInfoPopover: ({ onSeekToCaption }: { onSeekToCaption?: (timeSec: number) => void }) => (
     <button data-testid="media-info-popover" onClick={() => onSeekToCaption?.(2.5)}>
@@ -202,8 +147,6 @@ vi.mock('../services/proxy-service', () => ({
 vi.mock('../services/media-transcription-service', () => ({
   mediaTranscriptionService: mediaTranscriptionServiceMocks,
 }))
-
-vi.mock('../services/media-transcription-runner', () => mediaTranscriptionRunnerMocks)
 
 vi.mock('../services/subtitle-sidecar-service', () => ({
   subtitleSidecarService: subtitleSidecarServiceMocks,
@@ -286,40 +229,6 @@ vi.mock('../utils/audio-scrub-preview', () => ({
   audioScrubPreview: audioScrubPreviewMocks,
 }))
 
-vi.mock('@/shared/state/local-inference', () => ({
-  isLocalInferenceCancellationError: vi.fn(() => false),
-}))
-
-vi.mock('../deps/analysis', () => analysisMocks)
-
-const settingsStoreState = vi.hoisted(() => ({
-  captioningIntervalUnit: 'seconds' as const,
-  captioningIntervalValue: 3,
-}))
-
-vi.mock('../deps/settings-contract', () => ({
-  useSettingsStore: {
-    getState: () => settingsStoreState,
-  },
-  resolveCaptioningIntervalSec: (unit: 'seconds' | 'frames', value: number, fps: number) =>
-    unit === 'seconds' ? value : value / (fps > 0 ? fps : 30),
-  DEFAULT_CAPTIONING_INTERVAL_SECONDS: 3,
-}))
-
-vi.mock('@/infrastructure/storage', () => ({
-  saveCaptionThumbnail: vi.fn(async () => undefined),
-  deleteCaptionThumbnails: vi.fn(async () => undefined),
-  deleteCaptionEmbeddings: vi.fn(async () => undefined),
-  saveCaptionEmbeddings: vi.fn(async () => undefined),
-  saveCaptionImageEmbeddings: vi.fn(async () => undefined),
-  getCaptionThumbnailBlob: vi.fn(async () => null),
-  getTranscript: vi.fn(async () => null),
-}))
-
-vi.mock('../deps/scene-browser', () => ({
-  invalidateMediaCaptionThumbnails: vi.fn(),
-}))
-
 import { GridMediaCard, ListMediaCard } from './media-card'
 
 function makeMedia(overrides: Partial<MediaMetadata> = {}): MediaMetadata {
@@ -371,8 +280,6 @@ describe('MediaCard', () => {
     mediaStoreState.proxyStatus = new Map()
     mediaStoreState.proxyProgress = new Map()
     mediaStoreState.transcriptStatus = new Map()
-    mediaStoreState.transcriptProgress = new Map()
-    mediaStoreState.taggingMediaIds = new Set()
     mediaStoreState.markMediaBroken.mockReset()
     mediaStoreState.openMissingMediaDialog.mockReset()
     embeddedSubtitlePickerStoreMocks.open.mockReset()
@@ -394,10 +301,6 @@ describe('MediaCard', () => {
     mediaLibraryServiceMocks.getMediaBlobUrl.mockResolvedValue('blob:media-1')
     proxyServiceMocks.canGenerateProxy.mockReturnValue(true)
     proxyServiceMocks.deleteProxy.mockResolvedValue(undefined)
-    mediaTranscriptionRunnerMocks.runMediaTranscriptionJob.mockResolvedValue({
-      status: 'completed',
-      transcript: {},
-    })
     subtitleSidecarServiceMocks.scanEmbeddedSubtitleTracks.mockResolvedValue({
       tracks: [
         {
@@ -441,52 +344,15 @@ describe('MediaCard', () => {
     expect(typeof generateProxyCall?.[1]).toBe('function')
   })
 
-  it('opens the transcribe dialog and defers work until the user confirms', async () => {
-    const media = makeMedia()
-
-    render(<ListMediaCard media={media} />)
-
-    fireEvent.click(screen.getByText('Generate Transcript'))
-
-    // Clicking the menu item opens the dialog; transcription has NOT started.
-    expect(screen.getByTestId('transcribe-dialog')).toBeInTheDocument()
-    expect(mediaTranscriptionRunnerMocks.runMediaTranscriptionJob).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByText('Start Transcription'))
-
-    await waitFor(() => {
-      expect(mediaTranscriptionRunnerMocks.runMediaTranscriptionJob).toHaveBeenCalledTimes(1)
-    })
-    const [, options] = mediaTranscriptionRunnerMocks.runMediaTranscriptionJob.mock.calls[0]!
-    expect(options).toEqual(
-      expect.objectContaining({
-        model: 'whisper-base',
-        quantization: 'hybrid',
-        language: undefined,
-      }),
-    )
-  })
-
-  it('uses transcript wording in the media action menu', () => {
+  it('only shows transcript deletion when a stored transcript exists', () => {
     const { rerender } = render(<ListMediaCard media={makeMedia()} />)
-    expect(screen.getByText('Generate Transcript')).toBeInTheDocument()
+    expect(screen.queryByText('Generate Transcript')).not.toBeInTheDocument()
+    expect(screen.queryByText('Refresh Transcript')).not.toBeInTheDocument()
+    expect(screen.queryByText('Delete Transcript')).not.toBeInTheDocument()
 
     mediaStoreState.transcriptStatus = new Map([['media-1', 'ready']])
     rerender(<ListMediaCard media={makeMedia()} />)
-    expect(screen.getByText('Refresh Transcript')).toBeInTheDocument()
     expect(screen.getByText('Delete Transcript')).toBeInTheDocument()
-  })
-
-  it('shows the inline transcript progress bar while transcribing', () => {
-    mediaStoreState.transcriptStatus = new Map([['media-1', 'queued']])
-    mediaStoreState.transcriptProgress = new Map([['media-1', { stage: 'queued', progress: 0 }]])
-
-    render(<ListMediaCard media={makeMedia()} />)
-
-    expect(screen.getByRole('progressbar', { name: 'Transcript progress' })).toHaveAttribute(
-      'aria-valuenow',
-      '0',
-    )
   })
 
   it('deletes a transcript from the media action menu', async () => {
@@ -501,7 +367,6 @@ describe('MediaCard', () => {
       expect(mediaTranscriptionServiceMocks.deleteTranscript).toHaveBeenCalledWith('media-1')
     })
     expect(mediaStoreState.setTranscriptStatus).toHaveBeenCalledWith('media-1', 'idle')
-    expect(mediaStoreState.clearTranscriptProgress).toHaveBeenCalledWith('media-1')
     expect(mediaStoreState.showNotification).toHaveBeenCalledWith({
       type: 'success',
       message: 'Transcript deleted for "clip.mp4"',
@@ -633,22 +498,6 @@ describe('MediaCard', () => {
     expect(onRelink).toHaveBeenCalledTimes(1)
   })
 
-  it('shows an active AI analysis badge in list view while analysis is running', () => {
-    mediaStoreState.taggingMediaIds = new Set(['media-1'])
-
-    const { container } = render(<ListMediaCard media={makeMedia()} />)
-
-    expect(container.querySelector('[title="Analyzing with AI"]')).toBeTruthy()
-  })
-
-  it('shows an active AI analysis badge in grid view while analysis is running', () => {
-    mediaStoreState.taggingMediaIds = new Set(['media-1'])
-
-    const { container } = render(<GridMediaCard media={makeMedia()} />)
-
-    expect(container.querySelector('[title="Analyzing with AI"]')).toBeTruthy()
-  })
-
   it('opens a caption in the source monitor with a default three-second I/O range', () => {
     render(<ListMediaCard media={makeMedia()} />)
 
@@ -748,74 +597,5 @@ describe('MediaCard', () => {
         element.getAttribute('style')?.includes('right: 0px'),
       ),
     ).toBe(true)
-  })
-
-  it('stores AI analysis on the media item without inserting timeline captions', async () => {
-    const media = makeMedia({
-      fileName: 'frame.png',
-      mimeType: 'image/png',
-      duration: 0,
-      fps: 0,
-      codec: '',
-    })
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      blob: async () => new Blob(['image-data']),
-    } as Response)
-    analysisMocks.captionImage.mockResolvedValue([
-      {
-        timeSec: 1.25,
-        text: 'First line',
-        sceneData: {
-          caption: 'First line',
-          shotType: 'medium close-up',
-          timeOfDay: 'dusk',
-          weather: 'rainy',
-        },
-      },
-      { timeSec: 2.5, text: 'Second line' },
-    ])
-
-    render(<ListMediaCard media={media} />)
-
-    fireEvent.click(screen.getByText('Analyze with AI'))
-
-    await waitFor(() => {
-      expect(mediaLibraryServiceMocks.updateMediaCaptions).toHaveBeenCalledWith(
-        'media-1',
-        [
-          {
-            timeSec: 1.25,
-            text: 'First line',
-            sceneData: {
-              caption: 'First line',
-              shotType: 'medium close-up',
-              timeOfDay: 'dusk',
-              weather: 'rainy',
-            },
-          },
-          { timeSec: 2.5, text: 'Second line' },
-        ],
-        expect.objectContaining({ sampleIntervalSec: expect.any(Number) }),
-      )
-    })
-
-    expect(mediaStoreState.updateMediaCaptions).toHaveBeenCalledWith('media-1', [
-      {
-        timeSec: 1.25,
-        text: 'First line',
-        sceneData: {
-          caption: 'First line',
-          shotType: 'medium close-up',
-          timeOfDay: 'dusk',
-          weather: 'rainy',
-        },
-      },
-      { timeSec: 2.5, text: 'Second line' },
-    ])
-    expect(mediaStoreState.showNotification).toHaveBeenCalledWith({
-      type: 'success',
-      message: 'Generated 2 scene captions for "frame.png"',
-    })
-    fetchMock.mockRestore()
   })
 })

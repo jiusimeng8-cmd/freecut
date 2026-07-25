@@ -1,0 +1,23 @@
+FreeCut Third-Party Notices
+
+This distribution includes third-party software. This notice is informational
+and does not replace the applicable license texts or build-provider notices.
+
+FFmpeg and ffprobe
+
+FreeCut bundles Windows FFmpeg and ffprobe binaries supplied by gyan.dev. The
+bundled build provider identifies the build as licensed under GNU GPL version 3.
+
+The packaged resources contain:
+
+- windows/ffmpeg/LICENSE
+  The GNU GPL version 3 license text supplied with the bundled build.
+- windows/ffmpeg/README.txt
+  The build configuration, enabled third-party libraries, source reference,
+  and other information supplied by the build provider.
+- windows/ffmpeg/manifest.json
+  The bundled ffmpeg/ffprobe version lines and required notice-file inventory.
+
+The release owner must complete corresponding-source delivery and legal review
+before public distribution. This notice does not assert that those obligations
+have been satisfied.

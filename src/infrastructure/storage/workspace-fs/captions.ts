@@ -42,7 +42,6 @@ import {
   captionThumbRelPath,
   captionThumbsDir,
   contentCaptionEmbeddingsPath,
-  contentCaptionImageEmbeddingsPath,
   contentCaptionThumbPath,
   contentCaptionThumbRelPath,
   contentCaptionsJsonPath,
@@ -363,7 +362,7 @@ export async function getCaptionEmbeddings(
   }
 }
 
-export async function deleteCaptionEmbeddings(
+async function deleteCaptionEmbeddings(
   mediaId: string,
   opts: ContentKeyedOptions = {},
 ): Promise<void> {
@@ -382,80 +381,6 @@ export async function deleteCaptionEmbeddings(
   // Shared content-tree bins are GC'd by deleteSharedCaptionsIfUnreferenced
   // when the last ref goes away; individual deletes don't touch them.
   void opts.contentHash
-}
-
-/**
- * Persist per-caption CLIP image embeddings. Same layout as text
- * embeddings — `captionCount * embeddingDim` packed floats in caption
- * order. Safe to call independently of {@link saveCaptionEmbeddings};
- * either bin can exist without the other.
- */
-export async function saveCaptionImageEmbeddings(
-  mediaId: string,
-  vectors: Float32Array[],
-  embeddingDim: number,
-  opts: ContentKeyedOptions = {},
-): Promise<void> {
-  if (vectors.length === 0) return
-  const root = requireWorkspaceRoot()
-  const packed = new Float32Array(vectors.length * embeddingDim)
-  vectors.forEach((vector, index) => {
-    if (vector.length !== embeddingDim) {
-      throw new Error(
-        `Image embedding dim mismatch at index ${index}: got ${vector.length}, expected ${embeddingDim}`,
-      )
-    }
-    packed.set(vector, index * embeddingDim)
-  })
-  const target = opts.contentHash
-    ? contentCaptionImageEmbeddingsPath(opts.contentHash, opts.sampleIntervalSec)
-    : captionImageEmbeddingsPath(mediaId)
-  try {
-    await writeBlob(root, target, packed.buffer)
-  } catch (error) {
-    logger.error(`saveCaptionImageEmbeddings(${mediaId}) failed`, error)
-    throw new Error(`Failed to save caption image embeddings: ${mediaId}`)
-  }
-}
-
-export async function getCaptionImageEmbeddings(
-  mediaId: string,
-  embeddingDim: number,
-  expectedCount: number,
-  opts: ContentKeyedOptions = {},
-): Promise<Float32Array[] | null> {
-  if (expectedCount === 0) return []
-  const root = requireWorkspaceRoot()
-  const sharedTarget = opts.contentHash
-    ? contentCaptionImageEmbeddingsPath(opts.contentHash, opts.sampleIntervalSec)
-    : null
-  try {
-    let buffer = sharedTarget ? await readArrayBuffer(root, sharedTarget) : null
-    if (!buffer && sharedTarget && opts.sampleIntervalSec !== undefined) {
-      buffer = await readArrayBuffer(root, contentCaptionImageEmbeddingsPath(opts.contentHash!))
-    }
-    if (!buffer) {
-      buffer = await readArrayBuffer(root, captionImageEmbeddingsPath(mediaId))
-    }
-    if (!buffer) return null
-    const expectedFloats = expectedCount * embeddingDim
-    const got = buffer.byteLength / Float32Array.BYTES_PER_ELEMENT
-    if (got !== expectedFloats) {
-      logger.warn(
-        `getCaptionImageEmbeddings(${mediaId}): bin has ${got} floats, expected ${expectedFloats} — treating as stale`,
-      )
-      return null
-    }
-    const packed = new Float32Array(buffer)
-    const vectors: Float32Array[] = []
-    for (let i = 0; i < expectedCount; i += 1) {
-      vectors.push(packed.slice(i * embeddingDim, (i + 1) * embeddingDim))
-    }
-    return vectors
-  } catch (error) {
-    logger.warn(`getCaptionImageEmbeddings(${mediaId}) failed`, error)
-    return null
-  }
 }
 
 /**
@@ -539,7 +464,7 @@ export async function probeCaptionThumbnail(
  * content tree are untouched — they're GC'd via
  * {@link deleteSharedCaptionsIfUnreferenced} when the last media ref drops.
  */
-export async function deleteCaptionThumbnails(mediaId: string): Promise<void> {
+async function deleteCaptionThumbnails(mediaId: string): Promise<void> {
   const root = requireWorkspaceRoot()
   try {
     await removeEntry(root, captionThumbsDir(mediaId), { recursive: true })

@@ -1,9 +1,6 @@
 import { getOrDecodeAudioSliceForPlayback } from '@/features/timeline/deps/composition-runtime'
 import { resolveMediaUrl } from '@/features/timeline/deps/media-library-resolver'
-import {
-  mediaTranscriptionService,
-  runMediaTranscriptionJob,
-} from '@/features/timeline/deps/media-transcription-service'
+import { mediaTranscriptionService } from '@/features/timeline/deps/media-transcription-service'
 import { useItemsStore } from '@/features/timeline/stores/items-store'
 import { createLogger } from '@/shared/logging/logger'
 import type { MediaTranscript } from '@/types/storage'
@@ -259,15 +256,14 @@ async function analyzeSignalTarget(
   return analyzeSegmentsInWorker(segments, settings, signal)
 }
 
-async function getOrCreateTranscript(mediaId: string, signal: AbortSignal | undefined) {
+async function getExistingTranscript(mediaId: string, signal: AbortSignal | undefined) {
   throwIfAborted(signal)
-  const existing = await mediaTranscriptionService.getTranscript(mediaId).catch(() => null)
+  const transcript = await mediaTranscriptionService.getTranscript(mediaId)
   throwIfAborted(signal)
-  if (existing?.segments.length) return existing
-  const result = await runMediaTranscriptionJob(mediaId)
-  throwIfAborted(signal)
-  if (result.status === 'cancelled') throw abortError()
-  return result.transcript
+  if (!transcript?.segments.length) {
+    throw new Error('Speech-based silence detection requires an existing transcript')
+  }
+  return transcript
 }
 
 function collectSpeechRanges(transcript: MediaTranscript): SourceSpan[] {
@@ -364,7 +360,7 @@ async function analyzeSpeechTarget(
   settings: SilenceRemovalSettings,
   signal: AbortSignal | undefined,
 ): Promise<AudioSilenceRange[]> {
-  const transcript = await getOrCreateTranscript(target.mediaId, signal)
+  const transcript = await getExistingTranscript(target.mediaId, signal)
   return detectSpeechSilenceRanges(transcript, target.spans, settings)
 }
 

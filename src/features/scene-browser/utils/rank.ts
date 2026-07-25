@@ -21,27 +21,13 @@ export interface RankableScene {
   timeSec: number
   text: string
   thumbRelPath?: string
-  /**
-   * Dominant-color palette (CIELAB + weight) for UI swatch display and
-   * color-query ranking. Plumbed through from `MediaCaption.palette`.
-   */
+  /** Dominant-color palette used for swatches and color-only ranking. */
   palette?: Array<{ l: number; a: number; b: number; weight: number }>
 }
 
-/**
- * Per-signal breakdown of why a scene ranked. Surfaced on the row so
- * users can tell, at a glance, whether the match was driven by caption
- * keywords, semantic text meaning, or visual (CLIP) similarity — which
- * is the main UX gap that "I can't tell if semantic search is working"
- * points at.
- */
 export interface SceneMatchSignals {
   /** Which ranker produced this row. */
-  ranker: 'keyword' | 'semantic'
-  /** Cosine against the text (all-MiniLM) embedding, when semantic mode ran. */
-  textScore?: number
-  /** Cosine against the CLIP image embedding, when visual ranking ran. */
-  imageScore?: number
+  ranker: 'keyword' | 'palette'
   /** True when the row cleared the keyword match threshold. */
   keywordMatched?: boolean
   /**

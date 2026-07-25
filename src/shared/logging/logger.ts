@@ -70,6 +70,31 @@ function formatMessage(prefix: string, message: string): string {
   return prefix ? `[${prefix}] ${message}` : message
 }
 
+function serializeLogArgument(value: unknown): string {
+  if (value instanceof Error) {
+    return JSON.stringify({ name: value.name, message: value.message, stack: value.stack })
+  }
+  if (typeof value === 'string') return value
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
+function forwardDesktopLog(
+  level: 'warn' | 'error',
+  prefix: string,
+  message: string,
+  args: unknown[],
+): void {
+  if (typeof window === 'undefined' || !window.freecutDesktop) return
+  const formatted = [formatMessage(prefix, message), ...args.map(serializeLogArgument)]
+    .join(' ')
+    .slice(0, 16_384)
+  void window.freecutDesktop.diagnostics.log({ level, message: formatted }).catch(() => undefined)
+}
+
 function isDev(): boolean {
   return (
     typeof import.meta !== 'undefined' &&
@@ -110,11 +135,13 @@ function makeLogger(prefix: string, level: number): Logger {
     warn(message: string, ...args: unknown[]): void {
       if (shouldLog(2, currentLevel)) {
         console.warn(formatMessage(prefix, message), ...args)
+        forwardDesktopLog('warn', prefix, message, args)
       }
     },
     error(message: string, ...args: unknown[]): void {
       if (shouldLog(3, currentLevel)) {
         console.error(formatMessage(prefix, message), ...args)
+        forwardDesktopLog('error', prefix, message, args)
       }
     },
     event(name: string, data: EventData): void {
@@ -155,6 +182,7 @@ function makeLogger(prefix: string, level: number): Logger {
           // Failures always go to console.error as well
           if (shouldLog(3, currentLevel)) {
             console.error(formatMessage(prefix, name), eventData)
+            forwardDesktopLog('error', prefix, name, [eventData])
           } else {
             emitEvent(name, eventData)
           }

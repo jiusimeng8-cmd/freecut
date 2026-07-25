@@ -324,33 +324,6 @@
       }
     },
     "settings": {
-      "localInference": {
-        "noRuntimes": "No local inference runtimes are active or resident.",
-        "activeJobs_one": "{{count}} active job",
-        "activeJobs_other": "{{count}} active jobs",
-        "unloadedToast_one": "Unloaded {{count}} local runtime",
-        "unloadedToast_other": "Unloaded {{count}} local runtimes",
-        "unloadFailed": "Failed to unload local runtimes",
-        "unloadLabel": "Unload Local Models",
-        "unloading": "Unloading...",
-        "unloaded": "Unloaded",
-        "unload": "Unload"
-      },
-      "modelCache": {
-        "title": "Local AI Model Cache",
-        "description": "Shows cached model size. Clear a model to force a fresh download next time.",
-        "inspectFailed": "Failed to inspect local model cache",
-        "clearedToast": "Cleared {{label}}",
-        "alreadyEmptyToast": "{{label}} was already empty",
-        "clearFailed": "Failed to clear {{label}}",
-        "checking": "Checking...",
-        "refresh": "Refresh",
-        "inspectionUnavailable": "Cache inspection is unavailable in this environment.",
-        "unavailable": "Unavailable",
-        "approxSize": "Approx. {{size}}",
-        "cleared": "Cleared",
-        "clear": "Clear"
-      },
       "hotkeys": {
         "title": "Keyboard Shortcuts",
         "subtitle": "— select a command, then record a new combo",

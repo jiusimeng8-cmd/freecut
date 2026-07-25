@@ -70,7 +70,7 @@ const logger = createLogger('MediaSidebar')
 const TEXT_TEMPLATE_PREVIEW_SHELL =
   'w-full aspect-video rounded-sm border border-border bg-slate-950'
 
-function renderTextTemplatePreview(preset?: TextStylePreset) {
+function renderTextTemplatePreview(preset?: TextStylePreset, defaultCopy = 'Text') {
   if (!preset) {
     return (
       <div
@@ -78,7 +78,7 @@ function renderTextTemplatePreview(preset?: TextStylePreset) {
       >
         <Type className="w-3.5 h-3.5 text-muted-foreground/80" />
         <div className="text-[9px] leading-none tracking-wide text-muted-foreground/80 uppercase">
-          Text
+          {defaultCopy}
         </div>
       </div>
     )
@@ -273,7 +273,6 @@ const TEXT_TEMPLATE_GROUPS: ReadonlyArray<{
 ]
 
 const DEFAULT_TEXT_TEMPLATE_LABEL = 'Text'
-const ADD_TEXT_TEMPLATE_LABEL = 'Add Text'
 
 export const MediaSidebar = memo(function MediaSidebar() {
   const { t } = useTranslation()
@@ -532,6 +531,33 @@ export const MediaSidebar = memo(function MediaSidebar() {
 
     return grouped
   }, [])
+  const localizeTextTemplatePreset = useCallback(
+    (preset: TextStylePreset): TextStylePreset => {
+      const key = `editor.mediaSidebar.textTemplates.${preset.id}`
+      return {
+        ...preset,
+        label: t(`${key}.label`, { defaultValue: preset.label }),
+        sample: {
+          ...(preset.sample.eyebrow
+            ? {
+                eyebrow: t(`${key}.eyebrow`, {
+                  defaultValue: preset.sample.eyebrow,
+                }),
+              }
+            : {}),
+          title: t(`${key}.title`, { defaultValue: preset.sample.title }),
+          ...(preset.sample.subtitle
+            ? {
+                subtitle: t(`${key}.subtitle`, {
+                  defaultValue: preset.sample.subtitle,
+                }),
+              }
+            : {}),
+        },
+      }
+    },
+    [t],
+  )
 
   // Category items for the vertical nav
   const categories = [
@@ -806,38 +832,44 @@ export const MediaSidebar = memo(function MediaSidebar() {
                                 }}
                                 className="flex flex-col items-center gap-1 p-1.5 rounded-md border border-border bg-secondary/30 hover:bg-secondary/50 hover:border-primary/50 transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.98] group"
                               >
-                                {renderTextTemplatePreview()}
+                                {renderTextTemplatePreview(
+                                  undefined,
+                                  t('editor.mediaSidebar.text'),
+                                )}
                                 <span className="text-[9px] text-muted-foreground group-hover:text-foreground text-center leading-tight w-full">
-                                  {ADD_TEXT_TEMPLATE_LABEL}
+                                  {t('editor.mediaSidebar.addText')}
                                 </span>
                               </button>
                             ) : null}
-                            {presets.map((preset) => (
-                              <button
-                                key={preset.id}
-                                draggable={true}
-                                onDragStart={handleTemplateDragStart({
-                                  itemType: 'text',
-                                  label: preset.label,
-                                  textStylePresetId: preset.id,
-                                })}
-                                onDragEnd={handleTemplateDragEnd}
-                                onClick={() => {
-                                  if (shouldSuppressGeneratedItemClick()) return
-                                  handleAddText(preset.id)
-                                }}
-                                className={cn(
-                                  'flex flex-col items-center gap-1 p-1.5 rounded-md border border-border',
-                                  'bg-secondary/30 hover:bg-secondary/50 hover:border-primary/50',
-                                  'transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.98] group',
-                                )}
-                              >
-                                {renderTextTemplatePreview(preset)}
-                                <span className="text-[9px] text-muted-foreground group-hover:text-foreground text-center leading-tight w-full">
-                                  {preset.label}
-                                </span>
-                              </button>
-                            ))}
+                            {presets.map((preset) => {
+                              const localizedPreset = localizeTextTemplatePreset(preset)
+                              return (
+                                <button
+                                  key={preset.id}
+                                  draggable={true}
+                                  onDragStart={handleTemplateDragStart({
+                                    itemType: 'text',
+                                    label: preset.label,
+                                    textStylePresetId: preset.id,
+                                  })}
+                                  onDragEnd={handleTemplateDragEnd}
+                                  onClick={() => {
+                                    if (shouldSuppressGeneratedItemClick()) return
+                                    handleAddText(preset.id)
+                                  }}
+                                  className={cn(
+                                    'flex flex-col items-center gap-1 p-1.5 rounded-md border border-border',
+                                    'bg-secondary/30 hover:bg-secondary/50 hover:border-primary/50',
+                                    'transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.98] group',
+                                  )}
+                                >
+                                  {renderTextTemplatePreview(localizedPreset)}
+                                  <span className="text-[9px] text-muted-foreground group-hover:text-foreground text-center leading-tight w-full">
+                                    {localizedPreset.label}
+                                  </span>
+                                </button>
+                              )
+                            })}
                           </div>
                         </div>
                       )
@@ -1081,7 +1113,9 @@ export const MediaSidebar = memo(function MediaSidebar() {
                             className="w-full aspect-video rounded-sm"
                           />
                           <span className="text-[9px] text-muted-foreground group-hover:text-foreground text-center leading-tight">
-                            {preset.name}
+                            {t(`effects.presetNames.${preset.id}`, {
+                              defaultValue: preset.name,
+                            })}
                           </span>
                         </button>
                       ))}
@@ -1092,7 +1126,9 @@ export const MediaSidebar = memo(function MediaSidebar() {
                   {gpuCategories.map(({ category, effects: catEffects }) => (
                     <div key={category}>
                       <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
-                        {category}
+                        {t(`effects.categories.${category}`, {
+                          defaultValue: category,
+                        })}
                       </div>
                       <div className="grid grid-cols-3 gap-1.5">
                         {catEffects.map((def) => (
@@ -1127,7 +1163,9 @@ export const MediaSidebar = memo(function MediaSidebar() {
                               className="w-full aspect-video rounded-sm"
                             />
                             <span className="text-[9px] text-muted-foreground group-hover:text-foreground text-center leading-tight truncate w-full">
-                              {def.name}
+                              {t(`effects.names.${def.id}`, {
+                                defaultValue: def.name,
+                              })}
                             </span>
                           </button>
                         ))}

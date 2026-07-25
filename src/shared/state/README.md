@@ -18,4 +18,4 @@ Current modules:
 - `clear-keyframes-dialog`: workflow state for bulk keyframe deletion
 - `project-media-match-dialog`: workflow state for reconciling project/media metadata
 - `tts-generate-dialog`: workflow state for the editor TTS generation dialog
-- `local-inference`, `mixer-live-gain`, `transition-drag`: misc shared state
+- `mixer-live-gain`, `transition-drag`: misc shared state

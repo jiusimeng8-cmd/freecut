@@ -324,33 +324,6 @@
       }
     },
     "settings": {
-      "localInference": {
-        "noRuntimes": "Nenhum runtime de inferência local está ativo ou residente.",
-        "activeJobs_one": "{{count}} trabalho ativo",
-        "activeJobs_other": "{{count}} trabalhos ativos",
-        "unloadedToast_one": "{{count}} runtime local descarregado",
-        "unloadedToast_other": "{{count}} runtimes locais descarregados",
-        "unloadFailed": "Falha ao descarregar os runtimes locais",
-        "unloadLabel": "Descarregar modelos locais",
-        "unloading": "Descarregando...",
-        "unloaded": "Descarregado",
-        "unload": "Descarregar"
-      },
-      "modelCache": {
-        "title": "Cache de modelos de IA locais",
-        "description": "Mostra o tamanho do modelo em cache. Limpe um modelo para forçar um novo download na próxima vez.",
-        "inspectFailed": "Falha ao inspecionar o cache de modelos locais",
-        "clearedToast": "{{label}} limpo",
-        "alreadyEmptyToast": "{{label}} já estava vazio",
-        "clearFailed": "Falha ao limpar {{label}}",
-        "checking": "Verificando...",
-        "refresh": "Atualizar",
-        "inspectionUnavailable": "A inspeção do cache não está disponível neste ambiente.",
-        "unavailable": "Indisponível",
-        "approxSize": "Aprox. {{size}}",
-        "cleared": "Limpo",
-        "clear": "Limpar"
-      },
       "hotkeys": {
         "title": "Atalhos de teclado",
         "subtitle": "— selecione um comando e depois grave uma nova combinação",

@@ -10,7 +10,6 @@ const dependencyMocks = vi.hoisted(() => ({
   getOrDecodeAudioSliceForPlayback: vi.fn(),
   getTranscript: vi.fn(),
   resolveMediaUrl: vi.fn(),
-  runMediaTranscriptionJob: vi.fn(),
 }))
 
 vi.mock('@/features/timeline/deps/composition-runtime', () => ({
@@ -23,7 +22,6 @@ vi.mock('@/features/timeline/deps/media-library-resolver', () => ({
 
 vi.mock('@/features/timeline/deps/media-transcription-service', () => ({
   mediaTranscriptionService: { getTranscript: dependencyMocks.getTranscript },
-  runMediaTranscriptionJob: dependencyMocks.runMediaTranscriptionJob,
 }))
 
 import {
@@ -65,7 +63,6 @@ describe('silence removal analysis', () => {
     dependencyMocks.getOrDecodeAudioSliceForPlayback.mockReset()
     dependencyMocks.getTranscript.mockReset()
     dependencyMocks.resolveMediaUrl.mockReset()
-    dependencyMocks.runMediaTranscriptionJob.mockReset()
     useTimelineSettingsStore.setState({ fps: 1000 })
     useItemsStore.getState().setItems([])
   })

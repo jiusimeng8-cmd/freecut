@@ -2,7 +2,7 @@
   "transcript": {
     "title": "Transcript",
     "tabLabel": "Transcript",
-    "emptySelection": "Select a video or audio clip to edit its transcript.",
+    "emptySelection": "Select a subtitle, video, or audio clip to edit.",
     "searchPlaceholder": "Search transcript",
     "nextMatch": "Next match",
     "previousMatch": "Previous match",

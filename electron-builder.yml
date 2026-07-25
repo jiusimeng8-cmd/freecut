@@ -1,0 +1,58 @@
+appId: com.freecut.desktop
+productName: FreeCut
+copyright: Copyright (c) FreeCut
+directories:
+  output: release
+  buildResources: public/icons
+electronDist: node_modules/electron/dist
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+  - '!dist/**/*.map'
+  - '!dist-electron/**/*.map'
+  - '!node_modules{,/**/*}'
+asar: true
+asarUnpack:
+  - resources/windows/**/*
+extraResources:
+  - from: LICENSE
+    to: licenses/FreeCut-LICENSE.txt
+  - from: resources/licenses
+    to: licenses
+    filter:
+      - '**/*'
+  - from: resources/windows
+    to: windows
+    filter:
+      - '**/*'
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: public/icons/icon-512.png
+  artifactName: FreeCut-Setup-${version}-${arch}.${ext}
+  signAndEditExecutable: true
+  signExecutable: true
+  # electron-builder derives update publisherName from the signing certificate.
+  verifyUpdateCodeSignature: true
+  signExts:
+    - '!ffmpeg.exe'
+    - '!ffprobe.exe'
+  signtoolOptions:
+    signingHashAlgorithms:
+      - sha256
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: FreeCut
+  uninstallDisplayName: FreeCut
+  deleteAppDataOnUninstall: false
+publish:
+  provider: generic
+  url: ${env.FREECUT_UPDATE_URL}

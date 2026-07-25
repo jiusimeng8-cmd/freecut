@@ -7,7 +7,7 @@ const page = {
   description:
     'Record a voiceover, adjust clip gain and fades, pitch, per-clip EQ, the mixer and meters, and silence and filler-word cleanup.',
   category: 'Creative Tools',
-  related: ['properties', 'local-ai'],
+  related: ['properties'],
   sections: [
     {
       title: 'Adjust a clip',

@@ -4,7 +4,7 @@ const page = {
   order: 22,
   slug: 'troubleshooting',
   title: 'Troubleshooting',
-  description: 'Fixes for browser, workspace, media, WebGPU, local AI, and export problems.',
+  description: 'Fixes for browser, workspace, media, WebGPU, Agent, and export problems.',
   category: 'Reference',
   related: ['workspaces', 'export'],
   sections: [
@@ -68,21 +68,24 @@ const page = {
       ],
     },
     {
-      title: 'WebGPU and local AI',
+      title: 'WebGPU and Agent',
       blocks: [
         {
           kind: 'table',
           headers: ['Symptom', 'Fix'],
           rows: [
             [
-              'Effects, scopes, or AI unavailable',
-              'WebGPU may be off — use recent Chrome or Edge, update GPU drivers, and keep hardware acceleration on.',
+              'Effects or scopes unavailable',
+              'WebGPU may be off — update GPU drivers and keep hardware acceleration on.',
             ],
             [
-              'A model download is slow or fails',
-              'Keep the tab open, retry on a stable connection, and clear the **Local AI Model Cache** if a download is corrupt.',
+              'Local Agent Host is not ready',
+              'Open the project in the Electron desktop app. The Web editor does not provide the Local Agent Host.',
             ],
-            ['Out of memory during AI work', 'Use **Unload Local Models** to release runtimes.'],
+            [
+              'Agent or ASR request fails',
+              'Check the configured service endpoint, credential, Profile, and network connection.',
+            ],
             ['LUT import blocked', 'LUT (.cube) import requires a Chromium-based browser.'],
           ],
         },

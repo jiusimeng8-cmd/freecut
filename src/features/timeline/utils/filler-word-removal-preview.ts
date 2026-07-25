@@ -1,8 +1,5 @@
 import type { MediaTranscript, MediaTranscriptWord } from '@/types/storage'
-import {
-  mediaTranscriptionService,
-  runMediaTranscriptionJob,
-} from '@/features/timeline/deps/media-transcription-service'
+import { mediaTranscriptionService } from '@/features/timeline/deps/media-transcription-service'
 import { useItemsStore } from '@/features/timeline/stores/items-store'
 import { createLogger } from '@/shared/logging/logger'
 import {
@@ -115,20 +112,9 @@ export const FILLER_REMOVAL_PRESETS: FillerRemovalPreset[] = [
 
 export type FillerRange = AudioSilenceRange & {
   text: string
-  audioConfidence?: FillerAudioConfidence
 }
 
 export type FillerRangesByMediaId = Record<string, FillerRange[]>
-
-export type FillerAudioConfidenceLevel = 'high' | 'medium' | 'low' | 'unknown'
-
-export interface FillerAudioConfidence {
-  level: FillerAudioConfidenceLevel
-  score: number
-  fillerScore: number
-  nonFillerScore: number
-  label: string
-}
 
 export interface FillerPreviewSummary {
   rangeCount: number
@@ -277,33 +263,12 @@ function mergeCloseRanges(ranges: readonly FillerRange[]): FillerRange[] {
   return merged
 }
 
-const wordTranscriptCache = new Map<string, Promise<MediaTranscript>>()
-
 async function getTranscriptWithWords(mediaId: string): Promise<MediaTranscript> {
-  const cached = wordTranscriptCache.get(mediaId)
-  if (cached) {
-    return cached
+  const transcript = await mediaTranscriptionService.getTranscript(mediaId)
+  if (!transcript?.segments.some((segment) => (segment.words?.length ?? 0) > 0)) {
+    throw new Error('Filler removal requires an existing transcript with word timestamps')
   }
-
-  const promise = (async () => {
-    const existing = await mediaTranscriptionService.getTranscript(mediaId).catch(() => null)
-    if (existing?.segments.some((segment) => (segment.words?.length ?? 0) > 0)) {
-      return existing
-    }
-
-    const result = await runMediaTranscriptionJob(mediaId)
-    if (result.status === 'cancelled') {
-      throw new Error('Transcription cancelled')
-    }
-    return result.transcript
-  })()
-
-  wordTranscriptCache.set(mediaId, promise)
-  try {
-    return await promise
-  } finally {
-    wordTranscriptCache.delete(mediaId)
-  }
+  return transcript
 }
 
 export async function analyzeFillerWordsForItems(
@@ -341,7 +306,7 @@ export async function analyzeFillerWordsForItems(
   }
 
   if (succeeded === 0 && mediaIds.length > 0) {
-    throw new Error('Could not generate word-timestamp transcript for filler detection')
+    throw new Error('Filler removal requires an existing transcript with word timestamps')
   }
 
   return rangesByMediaId

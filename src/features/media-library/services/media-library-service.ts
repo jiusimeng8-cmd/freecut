@@ -902,7 +902,7 @@ class MediaLibraryService {
   async importMediaWithHandle(
     handle: FileSystemFileHandle,
     projectId: string,
-    options?: { storageMode?: 'copy' | 'link' },
+    options?: { storageMode?: 'copy' | 'link'; file?: File },
   ): Promise<MediaMetadata & { isDuplicate?: boolean; hasUnsupportedCodec?: boolean }> {
     // Stage 1: Get file from handle (instant)
     const hasPermission = await ensureFileHandlePermission(handle)
@@ -910,7 +910,7 @@ class MediaLibraryService {
       throw new FileAccessError('Permission denied to access file', 'permission_denied')
     }
 
-    const file = await handle.getFile()
+    const file = options?.file ?? (await handle.getFile())
 
     if (options?.storageMode === 'copy') {
       return this.importMediaFileToOpfs(file, projectId)

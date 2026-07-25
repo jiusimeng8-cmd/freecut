@@ -77,6 +77,37 @@ function composition(items: TimelineItem[] = []): CompositionInputProps {
   }
 }
 
+function compositionWithNestedItems(items: TimelineItem[]): CompositionInputProps {
+  const wrapper = {
+    id: 'composition-wrapper',
+    trackId: 'track-1',
+    type: 'composition',
+    from: 0,
+    durationInFrames: 30,
+    label: 'Nested',
+    compositionId: 'nested-composition',
+    compositionWidth: 1920,
+    compositionHeight: 1080,
+  } satisfies Extract<TimelineItem, { type: 'composition' }>
+  return {
+    ...composition([wrapper]),
+    compositions: [
+      {
+        id: 'nested-composition',
+        name: 'Nested',
+        items,
+        tracks: [track(items)],
+        transitions: [],
+        keyframes: [],
+        fps: 30,
+        width: 1920,
+        height: 1080,
+        durationInFrames: 30,
+      },
+    ],
+  }
+}
+
 describe('assessExportPreflight', () => {
   it('reports a ready video export when the selected codec is supported', async () => {
     const result = await assessExportPreflight({
@@ -264,6 +295,36 @@ describe('assessExportPreflight', () => {
       expect.objectContaining({
         id: 'missing-media-blocks-export',
         severity: 'error',
+        detailParams: { count: 1 },
+      }),
+    )
+  })
+
+  it('checks animated images and broken media inside nested compositions', async () => {
+    const nestedImage = imageItem({
+      id: 'nested-image',
+      mediaId: 'nested-missing-media',
+    })
+    const result = await assessExportPreflight({
+      settings: baseSettings,
+      fps: 30,
+      composition: compositionWithNestedItems([nestedImage]),
+      durationFrames: 300,
+      supportedVideoCodecs: ['avc'],
+      workerAvailable: true,
+      offlineAudioContextAvailable: true,
+      audioEncoderSupported: true,
+      brokenMediaIds: ['nested-missing-media'],
+    })
+
+    expect(result.canExport).toBe(false)
+    expect(result.predictedRenderPath).toBe('main-thread')
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({ id: 'worker-animated-image-fallback' }),
+    )
+    expect(result.checks).toContainEqual(
+      expect.objectContaining({
+        id: 'missing-media-blocks-export',
         detailParams: { count: 1 },
       }),
     )

@@ -1,23 +1,9 @@
-/**
- * Color-query boost for semantic search.
- *
- * CLIP is weak on pure color queries — it was trained on object-centric
- * captions, so "red color" drifts to whatever CLIP happens to associate
- * with the token. Industry CBIR systems (Imgix, TinEye) sidestep this
- * entirely by pre-extracting dominant colors per image and matching
- * query colors via ∆E in CIELAB, the approximately-perceptually-uniform
- * color space. We do the same here, using the pre-computed palette on
- * each `MediaCaption.palette`.
- *
- * Output: a ColorBoost per scene with the closest palette match, its
- * perceptual distance, and a score contribution calibrated to cosine
- * magnitudes so it composes cleanly with the text/image scores.
- */
+/** Color-only matching against the palette already stored on each caption. */
 
 import { deltaE2000, type LabColor, type PaletteEntry } from '../deps/analysis'
 
 export interface ColorBoostResult {
-  /** Additive score contribution, in cosine-compatible units. */
+  /** Ranking score derived from perceptual distance and palette weight. */
   boost: number
   /** Query color family that matched (e.g. "red"). */
   family: string
@@ -28,10 +14,8 @@ export interface ColorBoostResult {
 }
 
 /**
- * Tuned so that a visually-identical match (∆E ~0) contributes ~0.15
- * — roughly one confidence tier. ∆E ≥ 30 ("obviously different") gives
- * 0. Linear falloff in between keeps the math simple and explains
- * itself in chip tooltips.
+ * A visually identical match scores near the maximum; perceptually
+ * different colors at ∆E 30 or above do not match.
  */
 const MAX_BOOST = 0.18
 const ZERO_BOOST_DELTA_E = 30
@@ -255,8 +239,7 @@ function tokenize(text: string): string[] {
 
 /**
  * Parse whether the query is explicitly asking for palette matching.
- * Bare color words stay in the normal semantic lane so queries like
- * "yellow jacket" or "orange sunset" don't get treated as palette-only.
+ * Mixed content queries such as "yellow jacket" stay in keyword search.
  */
 export function parseColorQuery(query: string): ParsedColorQuery {
   const tokens = tokenize(query)
@@ -271,11 +254,7 @@ export function parseColorQuery(query: string): ParsedColorQuery {
     }
   }
 
-  // A query composed only of color words (e.g. "pink", "red blue") has no
-  // object semantics to chase — treat it as palette intent so CLIP's
-  // weakness on bare color tokens doesn't surface unrelated scenes above
-  // palette-matching ones. Multi-word queries like "pink jacket" still
-  // flow through the normal semantic path with an additive color boost.
+  // A query composed only of color words is unambiguously palette intent.
   const allTokensAreColors =
     tokens.length > 0 && tokens.every((token) => SYNONYM_TO_FAMILY.has(token))
   if (allTokensAreColors) {

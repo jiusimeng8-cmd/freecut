@@ -32,12 +32,13 @@ export function useAutoSave({ isDirty, onSave, enabled = true }: UseAutoSaveOpti
   const isSavingRef = useRef(false)
 
   useEffect(() => {
-    // Auto-save disabled if interval is 0 or hook is disabled
-    if (autoSaveInterval === 0 || !enabled) {
+    const isDesktop = window.freecutDesktop?.app.isDesktop === true
+    if ((!isDesktop && autoSaveInterval === 0) || !enabled) {
       return
     }
 
-    const intervalMs = autoSaveInterval * 60 * 1000 // Convert minutes to ms
+    const configuredIntervalMs = autoSaveInterval * 60 * 1000
+    const intervalMs = isDesktop ? 15_000 : configuredIntervalMs
 
     let idleCallbackId: number | undefined
 
@@ -55,6 +56,7 @@ export function useAutoSave({ isDirty, onSave, enabled = true }: UseAutoSaveOpti
           isSavingRef.current = true
           const event = logger.startEvent('save')
           event.set('interval_min', autoSaveInterval)
+          if (isDesktop) event.set('desktop_recovery_interval_ms', intervalMs)
 
           try {
             await onSave()

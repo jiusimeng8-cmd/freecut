@@ -1,199 +1,161 @@
-/**
- * Orchestration glue between the UI store, the local LLM adapter, and the tool
- * registry. Pure functions + a thin façade — no React, no Zustand here.
- *
- * The key reliability mechanism for a small local model is the
- * **validation-feedback retry**: when the model emits non-JSON or calls a tool
- * that doesn't exist / with bad args, we feed the exact problem back and let it
- * correct itself once before giving up. Combined with clip-ref grounding, this
- * is what makes Gemma's tool calls usable.
- */
+import { useProjectStore } from '@/features/editor/deps/projects'
+import { isCloudMcpConfigured } from '@/shared/state/cloud-mcp-config-store'
+import {
+  getCurrentCloudSnapshotId,
+  readCloudSnapshotComposite,
+} from './cloud-bridge-snapshots'
+import { getCloudAgentProfileId } from './cloud-agent-config-store'
+import type { ChatMessage } from './agent-store'
 
-import { getDefaultLlmAdapter, type LlmAdapter, type LlmMessage } from '@/infrastructure/llm'
-import { createLogger } from '@/shared/logging/logger'
-import { buildTimelineContext } from './timeline-context'
-import { buildMessages, parsePlan } from './prompt'
-import { getEditorTool } from './tools'
+export type LocalAgentRunStatus =
+  | 'completed'
+  | 'waiting_approval'
+  | 'failed'
+  | 'cancelled'
+  | 'uncertain'
+  | 'lease_held'
 
-const logger = createLogger('AgentService')
-
-const MAX_TOKENS = 512
-
-export interface PlannedStep {
-  tool: string
-  args: Record<string, unknown>
-  summary: string
-  /** True when the tool opens a review dialog instead of mutating directly. */
-  handoff: boolean
-  /** True when the tool destructively mutates the timeline (cut/delete). */
-  destructive: boolean
+export interface LocalAgentApproval {
+  id: string
+  name: string
+  arguments?: unknown
 }
 
-export interface PlanResult {
-  reply: string
-  steps: PlannedStep[]
-  /** Tool names the model asked for that were invalid (dropped after retry). */
-  dropped: string[]
-  raw: string
+export interface LocalAgentRunResult {
+  status: LocalAgentRunStatus
+  runId?: string
+  assistantText?: string
+  errorCode?: string
+  approval?: LocalAgentApproval
 }
 
-interface DroppedStep {
-  tool: string
-  reason: string
+interface LocalAgentRecord {
+  kind: string
+  id: string
+  threadId: string
+  role?: 'user' | 'assistant' | 'system' | 'tool'
+  body?: string
+  sequence?: number
 }
 
-export function getAgentAdapter(): LlmAdapter {
-  return getDefaultLlmAdapter()
+interface LocalAgentHostApi {
+  run(input: {
+    runId: string
+    threadId: string
+    workspaceId: string
+    projectId: string
+    timelineId: string
+    profileId: string
+    snapshotId: string
+    fingerprint: string
+    userMessage: string
+  }): Promise<LocalAgentRunResult>
+  approve(runId: string): Promise<LocalAgentRunResult>
+  cancel(runId: string): Promise<boolean>
+  listRecords(input: {
+    threadId: string
+    kinds: string[]
+  }): Promise<{ records: LocalAgentRecord[] }>
 }
 
-/** Validate raw model steps against the registry, dropping anything invalid. */
-function validateSteps(rawSteps: { tool: string; args: Record<string, unknown> }[]): {
-  steps: PlannedStep[]
-  dropped: DroppedStep[]
-} {
-  const steps: PlannedStep[] = []
-  const dropped: DroppedStep[] = []
+type DesktopWithLocalAgentHost = NonNullable<Window['freecutDesktop']> & {
+  localAgent?: LocalAgentHostApi
+}
 
-  for (const raw of rawSteps) {
-    const tool = getEditorTool(raw.tool)
-    if (!tool) {
-      dropped.push({ tool: raw.tool, reason: 'unknown tool' })
-      continue
-    }
-    const validation = tool.validate(raw.args)
-    if (!validation.ok) {
-      dropped.push({ tool: raw.tool, reason: validation.error })
-      continue
-    }
-    steps.push({
-      tool: tool.name,
-      args: validation.value,
-      summary: tool.summarize(validation.value),
-      handoff: tool.handoff,
-      destructive: tool.destructive,
-    })
+function localAgentThreadId(projectId: string): string {
+  return `project:${projectId}`
+}
+
+function localAgentHost(): LocalAgentHostApi | undefined {
+  return (window.freecutDesktop as DesktopWithLocalAgentHost | undefined)?.localAgent
+}
+
+export function assertLocalAgentConfigured(): void {
+  if (!isCloudMcpConfigured()) {
+    throw new Error('请先配置剪好 MCP Key。')
   }
-
-  return { steps, dropped }
-}
-
-function buildCorrection(wasValidJson: boolean, dropped: DroppedStep[]): string {
-  if (!wasValidJson) {
-    return 'Your last response was not valid JSON. Respond with ONLY the single JSON object described — no prose, no code fences.'
+  if (!localAgentHost()) {
+    throw new Error('本地 Agent Host 未就绪，请从剪好桌面应用启动项目。')
   }
-  const issues = dropped.map((entry) => `"${entry.tool}" (${entry.reason})`).join(', ')
-  return `These tool calls were invalid: ${issues}. Use only the listed tool names with the exact arg shapes, and target clips by their refs. Respond with ONLY the corrected JSON object.`
 }
 
-export interface PlanRequestOptions {
-  history: LlmMessage[]
-  onToken?: (delta: string, text: string) => void
-  signal?: AbortSignal
-}
+export async function readLocalAgentMessages(projectId: string): Promise<ChatMessage[]> {
+  const host = localAgentHost()
+  if (!host) return []
 
-export async function planRequest(
-  userText: string,
-  options: PlanRequestOptions,
-): Promise<PlanResult> {
-  const adapter = getAgentAdapter()
-  const context = buildTimelineContext()
-  const baseMessages = buildMessages(options.history, userText, context.text)
-
-  const raw = await adapter.generate(baseMessages, {
-    maxTokens: MAX_TOKENS,
-    temperature: 0,
-    onToken: options.onToken,
-    signal: options.signal,
+  const { records } = await host.listRecords({
+    threadId: localAgentThreadId(projectId),
+    kinds: ['turn'],
   })
-
-  let parsed = parsePlan(raw)
-  let { steps, dropped } = validateSteps(parsed.steps)
-
-  // One corrective retry when the model emitted no JSON or invalid tool calls.
-  if ((!parsed.valid || dropped.length > 0) && !options.signal?.aborted) {
-    logger.info('Agent plan needs correction', { valid: parsed.valid, dropped: dropped.length })
-    const retryMessages: LlmMessage[] = [
-      ...baseMessages,
-      { role: 'assistant', content: raw },
-      { role: 'user', content: buildCorrection(parsed.valid, dropped) },
-    ]
-    const retryRaw = await adapter.generate(retryMessages, {
-      maxTokens: MAX_TOKENS,
-      temperature: 0,
-      signal: options.signal,
-    })
-    const retryParsed = parsePlan(retryRaw)
-    const retryValidated = validateSteps(retryParsed.steps)
-    // Adopt the retry only if it's no worse than the first attempt.
-    if (retryParsed.valid && retryValidated.dropped.length <= dropped.length) {
-      parsed = retryParsed
-      steps = retryValidated.steps
-      dropped = retryValidated.dropped
-    }
-  }
-
-  let reply = parsed.reply
-  let actionSteps = splitReadOnly(steps).actions
-
-  // Bounded resolve hop: if the model asked to look something up (a read-only
-  // tool like search_transcript), run those reads, feed the results back, and let
-  // it produce a final, grounded plan — exactly one extra round, no open loop.
-  const readOnlySteps = splitReadOnly(steps).reads
-  if (readOnlySteps.length > 0 && !options.signal?.aborted) {
-    const observations: string[] = []
-    for (const step of readOnlySteps) {
-      const result = await runStep(step)
-      observations.push(`${step.summary}: ${result.message}`)
-    }
-    const hopMessages: LlmMessage[] = [
-      ...baseMessages,
-      { role: 'assistant', content: raw },
-      {
-        role: 'user',
-        content: `Results:\n${observations.join('\n')}\n\nNow give the final plan as JSON using these clip refs and times. Do not call read-only tools again.`,
-      },
-    ]
-    const hopRaw = await adapter.generate(hopMessages, {
-      maxTokens: MAX_TOKENS,
-      temperature: 0,
-      signal: options.signal,
-    })
-    const hopParsed = parsePlan(hopRaw)
-    if (hopParsed.valid) {
-      const hopValidated = validateSteps(hopParsed.steps)
-      actionSteps = splitReadOnly(hopValidated.steps).actions
-      reply = hopParsed.reply || reply
-      dropped = hopValidated.dropped
-    }
-  }
-
-  const finalReply = reply || (actionSteps.length > 0 ? 'Here is the plan.' : raw.trim())
-  return { reply: finalReply, steps: actionSteps, dropped: dropped.map((entry) => entry.tool), raw }
+  return records
+    .filter(
+      (record): record is LocalAgentRecord & {
+        role: 'user' | 'assistant'
+        body: string
+        sequence: number
+      } =>
+        record.kind === 'turn' &&
+        (record.role === 'user' || record.role === 'assistant') &&
+        typeof record.body === 'string' &&
+        typeof record.sequence === 'number',
+    )
+    .sort((left, right) => left.sequence - right.sequence)
+    .map((record) => ({
+      id: record.id,
+      role: record.role,
+      content: record.body,
+    }))
 }
 
-/** Partition planned steps into read-only "gather" steps and mutating actions. */
-function splitReadOnly(steps: PlannedStep[]): { reads: PlannedStep[]; actions: PlannedStep[] } {
-  const reads: PlannedStep[] = []
-  const actions: PlannedStep[] = []
-  for (const step of steps) {
-    if (getEditorTool(step.tool)?.readOnly) reads.push(step)
-    else actions.push(step)
+export async function runLocalAgent(
+  userText: string,
+  options: {
+    projectId?: string | null
+    runId: string
+  },
+): Promise<LocalAgentRunResult> {
+  assertLocalAgentConfigured()
+
+  const project = useProjectStore.getState().currentProject
+  const projectId = options.projectId ?? project?.id ?? null
+  if (!projectId) {
+    throw new Error('请先打开一个 FreeCut 项目。')
   }
-  return { reads, actions }
+
+  const snapshotId = getCurrentCloudSnapshotId(projectId)
+  const snapshot = await readCloudSnapshotComposite(snapshotId)
+  if (!snapshot) {
+    throw new Error('无法创建本地时间线快照。')
+  }
+
+  const host = localAgentHost()
+  if (!host) {
+    throw new Error('本地 Agent Host 未就绪，请从剪好桌面应用启动项目。')
+  }
+
+  return host.run({
+    runId: options.runId,
+    threadId: localAgentThreadId(projectId),
+    workspaceId: localAgentThreadId(projectId),
+    projectId,
+    timelineId: projectId,
+    profileId: getCloudAgentProfileId(),
+    snapshotId,
+    fingerprint: snapshot.fingerprints.composite,
+    userMessage: userText,
+  })
 }
 
-export interface StepRunResult {
-  ok: boolean
-  message: string
+export async function cancelLocalAgentRun(runId: string): Promise<void> {
+  const host = localAgentHost()
+  if (!host) return
+  await host.cancel(runId)
 }
 
-export async function runStep(step: PlannedStep): Promise<StepRunResult> {
-  const tool = getEditorTool(step.tool)
-  if (!tool) return { ok: false, message: `Unknown tool: ${step.tool}` }
-  try {
-    const result = await tool.execute(step.args)
-    return { ok: result.ok, message: result.message }
-  } catch (error) {
-    return { ok: false, message: error instanceof Error ? error.message : 'Step failed.' }
+export async function approveLocalAgentRun(runId: string): Promise<LocalAgentRunResult> {
+  const host = localAgentHost()
+  if (!host) {
+    throw new Error('本地 Agent Host 未就绪，请从剪好桌面应用启动项目。')
   }
+  return host.approve(runId)
 }

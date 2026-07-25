@@ -10,31 +10,6 @@ const CANONICAL_SHOT_SIZES = [
   'extreme close-up',
 ] as const
 
-export const LFM_SCENE_CAPTION_PROMPT =
-  'Analyze this single video frame and return a valid JSON object only.\n\n' +
-  'Use this exact schema:\n' +
-  '{' +
-  '"caption": string, ' +
-  '"shotType": string | null, ' +
-  '"subjects": string[], ' +
-  '"action": string | null, ' +
-  '"setting": string | null, ' +
-  '"lighting": string | null, ' +
-  '"timeOfDay": string | null, ' +
-  '"weather": string | null' +
-  '}\n\n' +
-  'Rules:\n' +
-  '- "caption" must be one detailed natural sentence.\n' +
-  '- Describe the visible subject, action, setting, lighting, time of day, and weather when clearly visible.\n' +
-  `- "shotType" is optional and must be one of: ${CANONICAL_SHOT_SIZES.join(', ')}.\n` +
-  '- If shot size is not unmistakable, use null.\n' +
-  '- If time of day or weather is unclear, use null.\n' +
-  '- Use null for missing scalar fields and [] for missing subjects.\n' +
-  '- The first character of the response must be { and the last character must be }.\n' +
-  '- Use double quotes around every key and every string value.\n' +
-  '- Do not mention camera motion, camera movement, editing, or uncertainty.\n' +
-  '- Do not wrap the JSON in markdown fences or prose.'
-
 const LABEL_PREFIX_PATTERN = /^(?:caption|scene|description)\s*:\s*/i
 const JSON_LEAD_IN_PATTERN = /^(?:json(?:\s+(?:object|response))?|response|output)\s*[:-]?\s*/i
 const SHOT_LABEL_PREFIX_PATTERN = /^shot(?:\s+type)?\s*:\s*/i

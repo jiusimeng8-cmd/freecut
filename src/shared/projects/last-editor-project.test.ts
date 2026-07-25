@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
+  forgetLastEditorProjectId,
   getEditorProjectIdFromPathname,
   getEditorProjectReloadPathWithCacheBust,
   rememberLastEditorProjectId,
@@ -42,5 +43,18 @@ describe('last editor project routing', () => {
     window.history.replaceState({}, '', '/projects?__freecut_updated=1780200314697')
 
     expect(getEditorProjectReloadPathWithCacheBust()).toBe('/projects?__freecut_updated=456')
+  })
+
+  it('forgets only the matching missing project', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(789)
+    rememberLastEditorProjectId('project-123')
+
+    forgetLastEditorProjectId('another-project')
+    expect(getEditorProjectReloadPathWithCacheBust()).toBe(
+      '/editor/project-123?__freecut_updated=789',
+    )
+
+    forgetLastEditorProjectId('project-123')
+    expect(getEditorProjectReloadPathWithCacheBust()).toBe('/?__freecut_updated=789')
   })
 })

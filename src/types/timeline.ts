@@ -143,7 +143,7 @@ export interface GeneratedCaptionSource {
   /**
    * `transcript` — generated from whisper speech-to-text segments.
    * `ai-captions` — generated from vision-language-model frame descriptions
-   *   (e.g. LFM captioning). Distinguished so replace/remove flows can target
+   *   from stored scene-caption metadata. Distinguished so replace/remove flows can target
    *   one kind without disturbing the other on the same clip.
    * `subtitle-import` — imported from a sidecar subtitle file such as SRT/VTT.
    * `embedded-subtitles` — extracted from an embedded media subtitle track.

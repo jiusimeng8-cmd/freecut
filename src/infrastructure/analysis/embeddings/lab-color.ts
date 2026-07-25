@@ -21,6 +21,10 @@ export interface LabColor {
   b: number
 }
 
+export interface PaletteEntry extends LabColor {
+  weight: number
+}
+
 // D65 reference white in XYZ.
 const REF_X = 0.95047
 const REF_Y = 1.0

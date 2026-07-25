@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Download,
   FolderArchive,
-  Github,
   Keyboard,
   ListVideo,
   Save,
@@ -17,8 +16,6 @@ import {
   Video,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { DiscordIcon } from '@/components/brand/discord-icon'
-import { DISCORD_INVITE_URL } from '@/config/community'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +24,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
-import { LocalInferenceStatusPill } from './local-inference-status-pill'
 import { ProjectDebugPanel } from './project-debug-panel'
 import { SettingsDialog } from './settings-dialog'
 import { ShortcutsDialog } from './shortcuts-dialog'
@@ -207,8 +203,6 @@ export const Toolbar = memo(function Toolbar({
         <WorkspaceSwitcher />
       </div>
 
-      <LocalInferenceStatusPill />
-
       <ShortcutsDialog open={showShortcutsDialog} onOpenChange={setShowShortcutsDialog} />
 
       <SettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
@@ -219,34 +213,6 @@ export const Toolbar = memo(function Toolbar({
         {import.meta.env.DEV && import.meta.env.VITE_SHOW_DEBUG_PANEL !== 'false' && (
           <DebugPopover projectId={projectId} />
         )}
-
-        {/* Socials */}
-        <Button variant="outline" size="icon" className="h-7 w-7" asChild>
-          <a
-            href="https://github.com/walterlow/freecut"
-            target="_blank"
-            rel="noopener noreferrer"
-            data-tooltip={t('toolbar.viewOnGitHub')}
-            data-tooltip-side="bottom"
-            aria-label={t('toolbar.viewOnGitHub')}
-          >
-            <Github className="h-4 w-4" />
-          </a>
-        </Button>
-        <Button variant="outline" size="icon" className="h-7 w-7" asChild>
-          <a
-            href={DISCORD_INVITE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            data-tooltip={t('toolbar.joinDiscord')}
-            data-tooltip-side="bottom"
-            aria-label={t('toolbar.joinDiscord')}
-          >
-            <DiscordIcon className="h-4 w-4" />
-          </a>
-        </Button>
-
-        <Separator orientation="vertical" className="h-5" />
 
         {/* Utility */}
         <Button variant="outline" size="icon" className="h-7 w-7" asChild>

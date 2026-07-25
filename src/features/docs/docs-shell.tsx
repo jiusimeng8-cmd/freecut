@@ -188,7 +188,7 @@ export function DocsHome() {
             ],
             [
               'Creative Tools',
-              'Text, shapes and masks, audio, effects, color, transitions, keyframes, animation, scenes, and local AI.',
+              'Text, shapes and masks, audio, effects, color, transitions, keyframes, animation, scenes, and the cloud Agent.',
             ],
             ['Output', 'Export files from the browser and manage queued renders.'],
           ] satisfies [DocCategory, string][]

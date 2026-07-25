@@ -1,3 +1,5 @@
+import { desktopDescriptorToHandle } from './desktop-file-system-access'
+
 const API_PREFIX = '/__freecut_dev_workspace'
 const BRIDGE_HEADER = 'X-FreeCut-Dev-Workspace'
 
@@ -7,6 +9,11 @@ type EntryKind = 'file' | 'directory'
 interface EntryDescriptor {
   name: string
   kind: EntryKind
+}
+
+interface LocalMediaFileDescriptor {
+  name: string
+  path: string
 }
 
 type WritableCommand =
@@ -202,6 +209,43 @@ class DevWorkspaceFileHandle extends DevWorkspaceHandle {
   }
 }
 
+class DevLocalMediaFileHandle {
+  readonly kind = 'file' as const
+
+  constructor(
+    readonly sourcePath: string,
+    readonly name: string,
+  ) {}
+
+  async getFile(): Promise<File> {
+    const search = new URLSearchParams({ path: this.sourcePath })
+    const response = await requireOk(
+      await fetch(`${API_PREFIX}/local-media-file?${search.toString()}`, {
+        cache: 'no-store',
+      }),
+    )
+    const lastModified = Number(response.headers.get('X-FreeCut-Last-Modified')) || Date.now()
+    const encodedName = response.headers.get('X-FreeCut-File-Name')
+    const name = encodedName ? decodeURIComponent(encodedName) : this.name
+    return new File([await response.blob()], name, {
+      lastModified,
+      type: response.headers.get('Content-Type') ?? '',
+    })
+  }
+
+  async isSameEntry(other: FileSystemHandle): Promise<boolean> {
+    return other instanceof DevLocalMediaFileHandle && other.sourcePath === this.sourcePath
+  }
+
+  async queryPermission(_descriptor?: PermissionMode): Promise<PermissionState> {
+    return 'granted'
+  }
+
+  async requestPermission(_descriptor?: PermissionMode): Promise<PermissionState> {
+    return 'granted'
+  }
+}
+
 class DevWorkspaceDirectoryHandle extends DevWorkspaceHandle {
   readonly kind = 'directory' as const
 
@@ -292,8 +336,39 @@ async function fetchDevWorkspaceInfo(): Promise<{ name: string } | null> {
 }
 
 export async function getDevWorkspaceHandle(): Promise<FileSystemDirectoryHandle | null> {
-  if (!import.meta.env.DEV) return null
+  if (!import.meta.env.DEV || window.freecutDesktop) return null
   const info = await fetchDevWorkspaceInfo()
   if (!info) return null
   return new DevWorkspaceDirectoryHandle([], info.name) as unknown as FileSystemDirectoryHandle
+}
+
+export async function getDevLocalMediaHandles(
+  path: string,
+  options: { recursive?: boolean } = {},
+): Promise<FileSystemFileHandle[]> {
+  if (window.freecutDesktop) {
+    const descriptors = await window.freecutDesktop.media.openLocalPath(path, options)
+    return descriptors.map(
+      (descriptor) => desktopDescriptorToHandle(descriptor) as FileSystemFileHandle,
+    )
+  }
+  if (!import.meta.env.DEV) {
+    throw new Error('Local path import is available only in the desktop or development build.')
+  }
+
+  const search = new URLSearchParams({ path })
+  if (options.recursive) search.set('recursive', '1')
+  const response = await requireOk(
+    await fetch(`${API_PREFIX}/local-media?${search.toString()}`, {
+      cache: 'no-store',
+    }),
+  )
+  if (response.headers.get(BRIDGE_HEADER) !== '1') {
+    throw new Error('The local media development bridge is not available.')
+  }
+
+  const body = (await response.json()) as { files: LocalMediaFileDescriptor[] }
+  return body.files.map(
+    (file) => new DevLocalMediaFileHandle(file.path, file.name) as unknown as FileSystemFileHandle,
+  )
 }

@@ -1,12 +1,5 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  getTranscriptionOverallProgress,
-  getTranscriptionProgressDetail,
-  getTranscriptionProgressLabel,
-  getTranscriptionStageLabel,
-  isIndeterminateTranscriptionProgress,
-} from '@/shared/utils/transcription-progress'
 import { formatDuration } from '@/shared/utils/time-utils'
 import { useMediaLibraryStore } from '../stores/media-library-store'
 import { useMediaPreparationStore } from '../stores/media-preparation-store'
@@ -29,9 +22,6 @@ export function useMediaTaskProgress() {
   const upscaleStatus = useMediaLibraryStore((s) => s.upscaleStatus)
   const upscaleProgress = useMediaLibraryStore((s) => s.upscaleProgress)
   const upscaleEtaSeconds = useMediaLibraryStore((s) => s.upscaleEtaSeconds)
-  const transcriptStatus = useMediaLibraryStore((s) => s.transcriptStatus)
-  const transcriptProgress = useMediaLibraryStore((s) => s.transcriptProgress)
-  const analysisProgress = useMediaLibraryStore((s) => s.analysisProgress)
   const mediaById = useMediaLibraryStore((s) => s.mediaById)
   const preparationTasks = useMediaPreparationStore((s) => s.tasks)
 
@@ -154,11 +144,6 @@ export function useMediaTaskProgress() {
     return rows
   }, [upscaleStatus, upscaleProgress, mediaById])
 
-  const analysisPercent =
-    analysisProgress && analysisProgress.total > 0
-      ? (analysisProgress.completed / analysisProgress.total) * 100
-      : 0
-
   const activePreparationTasks = useMemo(
     () =>
       [...preparationTasks.values()].filter(
@@ -166,14 +151,6 @@ export function useMediaTaskProgress() {
       ),
     [preparationTasks],
   )
-
-  const transcribingCount = useMemo(() => {
-    let count = 0
-    for (const status of transcriptStatus.values()) {
-      if (status === 'queued' || status === 'transcribing') count++
-    }
-    return count
-  }, [transcriptStatus])
 
   // Average progress of all generating proxies
   const generatingAvgProgress = useMemo(() => {
@@ -189,48 +166,6 @@ export function useMediaTaskProgress() {
     return count > 0 ? total / count : 0
   }, [proxyStatus, proxyProgress, generatingCount])
 
-  const transcribingAvgProgress = useMemo(() => {
-    if (transcribingCount === 0) return 0
-    let total = 0
-    let count = 0
-    for (const [id, status] of transcriptStatus.entries()) {
-      if (status === 'queued' || status === 'transcribing') {
-        const progress = transcriptProgress.get(id)
-        total += progress ? getTranscriptionOverallProgress(progress) : 0
-        count++
-      }
-    }
-    return count > 0 ? total / count : 0
-  }, [transcriptStatus, transcriptProgress, transcribingCount])
-
-  // Only meaningful for a single job — with several in flight there is no one stage to name.
-  const singleTranscriptionProgress = useMemo(() => {
-    if (transcribingCount !== 1) return null
-    for (const [id, status] of transcriptStatus.entries()) {
-      if (status === 'queued' || status === 'transcribing') {
-        return transcriptProgress.get(id) ?? null
-      }
-    }
-    return null
-  }, [transcriptStatus, transcriptProgress, transcribingCount])
-
-  const singleTranscriptionStageLabel = singleTranscriptionProgress
-    ? getTranscriptionProgressLabel(singleTranscriptionProgress)
-    : null
-
-  // Only the byte counter, never the compile prose: this bar lives in a ~250px panel, where
-  // "Optimizing for your hardware" truncates to noise. The pulsing indeterminate bar alongside
-  // "Preparing model" already says the compile is working. The dialog has room for the prose.
-  const singleTranscriptionDetail =
-    singleTranscriptionProgress?.stage === 'downloading'
-      ? getTranscriptionProgressDetail(singleTranscriptionProgress)
-      : null
-
-  /** Some stages report no fraction at all — show a moving bar, not a stalled one. */
-  const singleTranscriptionIndeterminate = singleTranscriptionProgress
-    ? isIndeterminateTranscriptionProgress(singleTranscriptionProgress)
-    : false
-
   // Per-item breakdowns shown when the aggregate progress bar is expanded.
   const proxyItemRows = useMemo(() => {
     const rows: Array<{ id: string; name: string; percent: number }> = []
@@ -245,22 +180,6 @@ export function useMediaTaskProgress() {
     }
     return rows
   }, [proxyStatus, proxyProgress, mediaById])
-
-  const transcriptionItemRows = useMemo(() => {
-    const rows: Array<{ id: string; name: string; percent: number; stage: string | null }> = []
-    for (const [id, status] of transcriptStatus.entries()) {
-      if (status === 'queued' || status === 'transcribing') {
-        const progress = transcriptProgress.get(id)
-        rows.push({
-          id,
-          name: mediaById[id]?.fileName ?? id,
-          percent: progress ? Math.round(getTranscriptionOverallProgress(progress) * 100) : 0,
-          stage: progress ? getTranscriptionStageLabel(progress.stage) : null,
-        })
-      }
-    }
-    return rows
-  }, [transcriptStatus, transcriptProgress, mediaById])
 
   const preparationItemRows = useMemo(() => {
     const groups = new Map<
@@ -322,8 +241,6 @@ export function useMediaTaskProgress() {
   const hasRunningPreparationTasks = preparationItemRows.some((row) => row.status === 'running')
 
   return {
-    analysisProgress,
-    analysisPercent,
     generatingCount,
     generatingAvgProgress,
     proxyItemRows,
@@ -336,12 +253,6 @@ export function useMediaTaskProgress() {
     upscalingAvgProgress,
     upscaleItemRows,
     upscaleEtaLabel,
-    transcribingCount,
-    transcribingAvgProgress,
-    singleTranscriptionStageLabel,
-    singleTranscriptionDetail,
-    singleTranscriptionIndeterminate,
-    transcriptionItemRows,
     preparationItemRows,
     preparingCount,
     preparingAvgProgress,

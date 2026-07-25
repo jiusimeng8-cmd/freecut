@@ -2,7 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { i18n, i18nReady } from './i18n'
 import { App } from './app'
+import { installDesktopFileSystemAccess } from '@/infrastructure/storage/desktop-file-system-access'
+import { initializeCloudMcpConfigStore } from '@/shared/state/cloud-mcp-config-store'
 import { createLogger } from '@/shared/logging/logger'
+import { installDesktopUpdateSafely } from '@/shared/desktop/install-update'
 import {
   getEditorProjectIdFromPathname,
   getEditorProjectReloadPathWithCacheBust,
@@ -11,10 +14,21 @@ import {
 import './index.css'
 
 const log = createLogger('App')
+const isDesktop = window.freecutDesktop?.app.isDesktop === true
 const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000
 const ACCEPTED_APP_UPDATE_SIGNATURE_KEY = 'freecut-accepted-app-update-signature'
+const DESKTOP_UPDATE_TOAST_ID = 'freecut-desktop-update'
 
 let updateToastVisible = false
+let desktopUpdateRequested = false
+let latestDesktopUpdateNotificationAt = 0
+
+window.addEventListener('error', (event) => {
+  log.error('Unhandled window error:', event.error ?? event.message)
+})
+window.addEventListener('unhandledrejection', (event) => {
+  log.error('Unhandled promise rejection:', event.reason)
+})
 
 // Debug utilities are editor-heavy; keep them out of the production startup graph.
 if (import.meta.env.DEV) {
@@ -99,6 +113,104 @@ async function showUpdateAvailableToast(
       updateToastVisible = false
     },
   })
+}
+
+type DesktopApi = NonNullable<Window['freecutDesktop']>
+type DesktopUpdateStatus = Awaited<ReturnType<DesktopApi['updates']['getStatus']>>
+
+async function showDesktopUpdateNotification(status: DesktopUpdateStatus): Promise<void> {
+  const desktop = window.freecutDesktop
+  if (!desktop || status.updatedAt < latestDesktopUpdateNotificationAt) return
+  latestDesktopUpdateNotificationAt = status.updatedAt
+
+  if (
+    status.phase !== 'available' &&
+    status.phase !== 'downloading' &&
+    status.phase !== 'downloaded' &&
+    !(status.phase === 'error' && desktopUpdateRequested)
+  ) {
+    return
+  }
+
+  window.dispatchEvent(new Event('freecut:ensure-toaster'))
+  const notificationAt = status.updatedAt
+  const { toast } = await import('sonner')
+  if (notificationAt < latestDesktopUpdateNotificationAt) return
+
+  if (status.phase === 'available') {
+    toast.info(i18n.t('settings.desktop.status.available', { version: status.availableVersion }), {
+      id: DESKTOP_UPDATE_TOAST_ID,
+      duration: Infinity,
+      action: {
+        label: i18n.t('settings.desktop.actions.download'),
+        onClick: () => {
+          desktopUpdateRequested = true
+          void desktop.updates.download().catch(() => {
+            toast.error(i18n.t('settings.desktop.updateFailed'), {
+              id: DESKTOP_UPDATE_TOAST_ID,
+            })
+          })
+        },
+      },
+    })
+    return
+  }
+
+  if (status.phase === 'downloading') {
+    toast.loading(
+      i18n.t('settings.desktop.status.downloading', {
+        percent: Math.round(status.progressPercent ?? 0),
+      }),
+      {
+        id: DESKTOP_UPDATE_TOAST_ID,
+        duration: Infinity,
+      },
+    )
+    return
+  }
+
+  if (status.phase === 'downloaded') {
+    desktopUpdateRequested = false
+    toast.success(
+      i18n.t('settings.desktop.status.downloaded', { version: status.availableVersion }),
+      {
+        id: DESKTOP_UPDATE_TOAST_ID,
+        duration: Infinity,
+        action: {
+          label: i18n.t('settings.desktop.actions.restartInstall'),
+          onClick: async () => {
+            await installDesktopUpdateSafely().catch(() => {
+              toast.error(i18n.t('settings.desktop.updateFailed'), {
+                id: DESKTOP_UPDATE_TOAST_ID,
+              })
+            })
+          },
+        },
+        cancel: {
+          label: i18n.t('settings.desktop.actions.later'),
+          onClick: () => toast.dismiss(DESKTOP_UPDATE_TOAST_ID),
+        },
+      },
+    )
+    return
+  }
+
+  desktopUpdateRequested = false
+  toast.error(i18n.t('settings.desktop.updateFailed'), {
+    id: DESKTOP_UPDATE_TOAST_ID,
+  })
+}
+
+function watchDesktopUpdates(): void {
+  const desktop = window.freecutDesktop
+  if (!desktop) return
+  desktop.updates.onStatus((status) => {
+    void showDesktopUpdateNotification(status)
+  })
+  void desktop.updates
+    .getStatus()
+    .then((status) => showDesktopUpdateNotification(status))
+    .catch(() => undefined)
 }
 
 function getBuildAssetSignature(documentToInspect: Document): string {
@@ -232,7 +344,7 @@ window.addEventListener('error', (event) => {
 // the toast when the live entry-script hash actually differs from ours. A transient
 // failure leaves the signature unchanged, so it stays silent and the user can retry.
 window.addEventListener('vite:preloadError', () => {
-  void checkForAppShellUpdate()
+  if (!isDesktop) void checkForAppShellUpdate()
 })
 
 // IMPORTANT: Intentionally do not dispose filmstrip cache on beforeunload.
@@ -240,7 +352,7 @@ window.addEventListener('vite:preloadError', () => {
 // should survive refresh/reload.
 // The browser tears down workers/resources on navigation anyway.
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+if (!isDesktop && import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')
@@ -269,10 +381,21 @@ if (!rootElement) {
   throw new Error('Root element not found')
 }
 
-void i18nReady.then(() => {
-  createRoot(rootElement).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  )
+installDesktopFileSystemAccess()
+if (isDesktop) watchDesktopUpdates()
+createRoot(rootElement).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+
+void Promise.allSettled([
+  i18nReady,
+  initializeCloudMcpConfigStore(),
+]).then((results) => {
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      log.error('Desktop startup service failed:', result.reason)
+    }
+  }
 })

@@ -13,11 +13,18 @@ export {
   getPropertyKeyframes,
   interpolatePropertyValue,
 } from '@/features/keyframes/utils/interpolation'
+export { colorStringToKeyframeValue } from '@/features/keyframes/utils/color-keyframes'
 export {
   getAutoKeyframeOperation,
   type AutoKeyframeOperation,
 } from '@/features/keyframes/utils/auto-keyframe'
+export { useAutoKeyframeStore } from '@/features/keyframes/stores/auto-keyframe-store'
 export { getAnimatablePropertiesForItem } from '@/features/keyframes/utils/animatable-properties'
+export {
+  loadCustomPresets,
+  saveCustomPresets,
+} from '@/features/keyframes/components/dopesheet-editor/custom-easing-presets'
+export type { EasingPreset } from '@/features/keyframes/components/dopesheet-editor/easings-dev-presets'
 export {
   MOTION_PRESETS,
   MOTION_PRESET_CATEGORIES,

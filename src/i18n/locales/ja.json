@@ -87,21 +87,6 @@
       "uiSoundVoice": "サウンドテーマ",
       "uiSoundPreview": "プレビュー"
     },
-    "ai": {
-      "captionSampleInterval": "字幕のサンプリング間隔",
-      "captionSampleIntervalDescription": "「AI で分析」が字幕用にフレームをサンプリングする頻度です。",
-      "seconds": "秒",
-      "frames": "フレーム",
-      "unitSec": "秒",
-      "unitFrames": "フレーム",
-      "enterIntervalAboveZero": "0 より大きい間隔を入力してください。",
-      "captionEstimate": "{{fps}} fps の 1 分間のクリップあたり約 {{sceneCount}} {{scenes}}",
-      "scene_one": "シーン",
-      "scene_other": "シーン",
-      "captionIntervalHint": "{{estimate}}。間隔が小さいほどシーンは密になりますが、生成に時間がかかります。",
-      "defaultCaptionStyle": "デフォルトの字幕スタイル",
-      "defaultCaptionStyleDescription": "文字起こしまたはAI字幕から生成された字幕に適用されるスタイル。"
-    },
     "timeline": {
       "snapByDefault": "デフォルトでスナップ",
       "snapByDefaultDescription": "プロジェクトを開いたときの初期スナップ状態を設定します。",
@@ -126,8 +111,6 @@
       "deleteProxies": "プロキシを削除",
       "deleteProxiesDescription": "このプロジェクト用に生成されたプロキシ動画を削除します",
       "deleted": "削除済み",
-      "localAi": "ローカル AI",
-      "localAiDescription": "常駐ランタイムをアンロードするか、キャッシュされたモデルのダウンロードをクリアします。",
       "clearCacheConfirmTitle": "プロジェクトのキャッシュをクリアしますか？",
       "clearCacheConfirmDescription": "現在のプロジェクト ({{count}} 件のメディア) のキャッシュされた波形、動画サムネイル帯、GIF フレーム、デコード済みオーディオを削除します。必要に応じて自動的に再生成されます。プロジェクトデータ、メディアファイル、サムネイル、プロキシは影響を受けません。",
       "clearCache": "キャッシュをクリア"

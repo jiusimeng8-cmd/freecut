@@ -3,22 +3,10 @@ import { toast } from 'sonner'
 import { i18n } from '@/i18n'
 import type { TimelineItem as TimelineItemType } from '@/types/timeline'
 import type { AnimatableProperty } from '@/types/keyframe'
-import type { MediaTranscriptModel, MediaTranscriptQuantization } from '@/types/storage'
 import { useSelectionStore } from '@/shared/state/selection'
 import { usePlaybackStore } from '@/shared/state/playback'
 import { useClearKeyframesDialogStore } from '@/shared/state/clear-keyframes-dialog'
-import { useTtsGenerateDialogStore } from '@/shared/state/tts-generate-dialog'
-import { getTextItemPlainText } from '@/shared/utils/text-item-spans'
-import {
-  isTranscriptionOutOfMemoryError,
-  TRANSCRIPTION_OOM_HINT,
-} from '@/shared/utils/transcription-cancellation'
 import { useMediaLibraryStore } from '@/features/timeline/deps/media-library-store'
-import {
-  getMediaTranscriptionModelLabel,
-  mediaTranscriptionService,
-  runMediaTranscriptionJob,
-} from '@/features/timeline/deps/media-transcription-service'
 import { useTimelineStore } from '../../stores/timeline-store'
 import { useItemsStore } from '../../stores/items-store'
 import {
@@ -41,11 +29,7 @@ import { useSilenceRemovalDialogStore } from '../../stores/silence-removal-dialo
 import { useFillerRemovalDialogStore } from '../../stores/filler-removal-dialog-store'
 import { canJoinMultipleItems } from '../../utils/clip-utils'
 import { canLinkSelection, hasLinkedItems } from '../../utils/linked-items'
-import {
-  getSceneVerificationModelLabel,
-  importSceneDetection,
-  type VerificationModel,
-} from '../../deps/analysis'
+import { importSceneDetection } from '../../deps/analysis'
 import { resolveMediaUrl } from '../../deps/media-library-resolver'
 import { useBentoLayoutDialogStore } from '../bento-layout-dialog-store'
 import { createLogger } from '@/shared/logging/logger'
@@ -189,121 +173,6 @@ export function useTimelineItemActions({
     void insertFreezeFrame(item.id, currentFrame)
   }, [item.id, item.type])
 
-  const textContent = item.type === 'text' ? getTextItemPlainText(item) : ''
-  const hasSpeakableText = textContent.trim().length > 0
-
-  const handleGenerateAudioFromText = useCallback(() => {
-    if (!hasSpeakableText) {
-      return
-    }
-    useTtsGenerateDialogStore.getState().open(textContent, item.id)
-  }, [hasSpeakableText, item.id, textContent])
-
-  const handleCaptionGeneration = useCallback(
-    (
-      model: MediaTranscriptModel,
-      options?: {
-        forceTranscription?: boolean
-        replaceExisting?: boolean
-        quantization?: MediaTranscriptQuantization
-        language?: string
-        onError?: (error: unknown) => void
-      },
-    ) => {
-      if ((item.type !== 'video' && item.type !== 'audio') || !item.mediaId || isBroken) {
-        return
-      }
-
-      const mediaId = item.mediaId
-      const clipId = item.id
-      const store = useMediaLibraryStore.getState()
-      const forceTranscription = options?.forceTranscription ?? false
-      const replaceExisting = options?.replaceExisting ?? false
-
-      const run = async () => {
-        try {
-          const existingTranscript = await mediaTranscriptionService.getTranscript(mediaId)
-          const needsTranscription =
-            forceTranscription || !existingTranscript || existingTranscript.model !== model
-
-          if (needsTranscription) {
-            const result = await runMediaTranscriptionJob(mediaId, {
-              model,
-              quantization: options?.quantization,
-              language: options?.language || undefined,
-            })
-            if (result.status === 'cancelled') {
-              return
-            }
-          } else {
-            store.setTranscriptStatus(mediaId, 'ready')
-            store.clearTranscriptProgress(mediaId)
-          }
-          const result = await mediaTranscriptionService.enableTranscriptCaptions(mediaId, {
-            clipIds: [clipId],
-            replaceExisting,
-          })
-
-          const modelLabel = getMediaTranscriptionModelLabel(model)
-          const successMessage = replaceExisting
-            ? result.updatedClipCount > 0
-              ? result.removedItemCount > 0
-                ? i18n.t('timeline.captions.updatedWithModel', { model: modelLabel })
-                : i18n.t('timeline.captions.refreshedWithModel', { model: modelLabel })
-              : i18n.t('timeline.captions.removedFromSegment')
-            : i18n.t('timeline.captions.addedWithModel', { model: modelLabel })
-
-          store.showNotification({
-            type: 'success',
-            message: successMessage,
-          })
-        } catch (error) {
-          const fallbackMessage =
-            error instanceof Error
-              ? error.message
-              : i18n.t('timeline.captions.failedGenerateSegment')
-          const friendlyMessage = isTranscriptionOutOfMemoryError(error)
-            ? TRANSCRIPTION_OOM_HINT
-            : fallbackMessage
-          options?.onError?.(error)
-          store.showNotification({
-            type: 'error',
-            message: friendlyMessage,
-          })
-        }
-      }
-
-      // Start directly rather than via requestAnimationFrame: rAF is suspended while the
-      // tab is hidden/occluded, which would leave caption generation hung until the tab
-      // regained focus. Transcription runs in workers, so there's no paint to wait for.
-      void run()
-    },
-    [item.id, item.mediaId, item.type, isBroken],
-  )
-
-  const handleCaptionsFromDialog = useCallback(
-    (
-      values: {
-        model: MediaTranscriptModel
-        quantization: MediaTranscriptQuantization
-        language: string
-      },
-      hasExistingCaptions: boolean,
-      onError?: (error: unknown) => void,
-    ) => {
-      handleCaptionGeneration(values.model, {
-        // The dialog path is always "generate fresh captions". Existing
-        // transcripts are auto-enabled as virtual captions when clips load.
-        forceTranscription: true,
-        replaceExisting: hasExistingCaptions,
-        quantization: values.quantization,
-        language: values.language,
-        onError,
-      })
-    },
-    [handleCaptionGeneration],
-  )
-
   const isSceneDetectionActive = segmentOverlays.some(
     (overlay) => overlay.id === SCENE_DETECTION_OVERLAY_ID,
   )
@@ -347,7 +216,7 @@ export function useTimelineItemActions({
   }, [])
 
   const handleDetectScenes = useCallback(
-    (method: 'histogram' | 'optical-flow', verificationModel?: VerificationModel) => {
+    (method: 'histogram' | 'optical-flow') => {
       if (item.type !== 'video' || !item.mediaId || isBroken) {
         return
       }
@@ -401,22 +270,12 @@ export function useTimelineItemActions({
           const { detectScenes } = await importSceneDetection()
           const cuts = await detectScenes(video, currentFps, {
             method,
-            verificationModel,
             mediaId,
             signal: abortController.signal,
             onProgress: (progress) => {
-              const modelLabel = progress.verificationModel
-                ? getSceneVerificationModelLabel(progress.verificationModel)
-                : 'AI'
-              const stageLabels = {
-                'optical-flow': `Analyzing ${method === 'histogram' ? 'frames' : 'motion'} (${progress.sceneCuts} candidates)`,
-                'loading-model': `Loading ${modelLabel} model (${progress.percent.toFixed(0)}%)`,
-                verifying: `Verifying cuts (${progress.sceneCuts}/${progress.totalSamples} confirmed)`,
-              }
-              const label = stageLabels[progress.stage ?? 'optical-flow']
               useTimelineItemOverlayStore.getState().upsertOverlay(clipId, {
                 id: SCENE_DETECTION_OVERLAY_ID,
-                label,
+                label: `Analyzing ${method === 'histogram' ? 'frames' : 'motion'} (${progress.sceneCuts} candidates)`,
                 progress: progress.percent,
                 tone: 'info',
               })
@@ -430,10 +289,9 @@ export function useTimelineItemActions({
               mediaId,
               service:
                 method === 'histogram' ? 'scene-detect-histogram' : 'scene-detect-optical-flow',
-              model: verificationModel ?? method,
+              model: method,
               method,
               sampleIntervalMs: method === 'histogram' ? 250 : 500,
-              verificationModel,
               fps: mediaFps,
               cuts,
             }).catch((error) => logger.warn('Failed to persist scene cuts', error))
@@ -571,7 +429,6 @@ export function useTimelineItemActions({
     getCanJoinSelected,
     getCanLinkSelected,
     getCanUnlinkSelected,
-    hasSpeakableText,
     isSceneDetectionActive,
     isRemovingFillers,
     isCompositionItem,
@@ -587,8 +444,6 @@ export function useTimelineItemActions({
     handleClearPropertyKeyframes,
     handleBentoLayout,
     handleFreezeFrame,
-    handleGenerateAudioFromText,
-    handleCaptionsFromDialog,
     handleCreatePreComp,
     handleEnterComposition,
     handleDissolveComposition,

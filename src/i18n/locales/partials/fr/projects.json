@@ -324,33 +324,6 @@
       }
     },
     "settings": {
-      "localInference": {
-        "noRuntimes": "Aucun environnement d'inférence local n'est actif ou résident.",
-        "activeJobs_one": "{{count}} tâche active",
-        "activeJobs_other": "{{count}} tâches actives",
-        "unloadedToast_one": "{{count}} environnement local déchargé",
-        "unloadedToast_other": "{{count}} environnements locaux déchargés",
-        "unloadFailed": "Échec du déchargement des environnements locaux",
-        "unloadLabel": "Décharger les modèles locaux",
-        "unloading": "Déchargement...",
-        "unloaded": "Déchargé",
-        "unload": "Décharger"
-      },
-      "modelCache": {
-        "title": "Cache des modèles d'IA locaux",
-        "description": "Affiche la taille du modèle en cache. Effacez un modèle pour forcer un nouveau téléchargement la prochaine fois.",
-        "inspectFailed": "Échec de l'inspection du cache des modèles locaux",
-        "clearedToast": "{{label}} effacé",
-        "alreadyEmptyToast": "{{label}} était déjà vide",
-        "clearFailed": "Échec de l'effacement de {{label}}",
-        "checking": "Vérification...",
-        "refresh": "Actualiser",
-        "inspectionUnavailable": "L'inspection du cache n'est pas disponible dans cet environnement.",
-        "unavailable": "Indisponible",
-        "approxSize": "Env. {{size}}",
-        "cleared": "Effacé",
-        "clear": "Effacer"
-      },
       "hotkeys": {
         "title": "Raccourcis clavier",
         "subtitle": "— sélectionnez une commande, puis enregistrez une nouvelle combinaison",

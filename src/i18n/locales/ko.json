@@ -87,21 +87,6 @@
       "uiSoundVoice": "사운드 테마",
       "uiSoundPreview": "미리듣기"
     },
-    "ai": {
-      "captionSampleInterval": "자막 샘플링 간격",
-      "captionSampleIntervalDescription": "'AI로 분석'이 자막용 프레임을 샘플링하는 빈도입니다.",
-      "seconds": "초",
-      "frames": "프레임",
-      "unitSec": "초",
-      "unitFrames": "프레임",
-      "enterIntervalAboveZero": "0보다 큰 간격을 입력하세요.",
-      "captionEstimate": "{{fps}} fps에서 1분 클립당 약 {{sceneCount}}{{scenes}}",
-      "scene_one": "개 장면",
-      "scene_other": "개 장면",
-      "captionIntervalHint": "{{estimate}}. 간격이 작을수록 장면이 더 촘촘해지지만 생성에 시간이 더 걸립니다.",
-      "defaultCaptionStyle": "기본 자막 스타일",
-      "defaultCaptionStyleDescription": "전사 또는 AI 자막으로 생성된 자막에 적용되는 스타일입니다."
-    },
     "timeline": {
       "snapByDefault": "기본적으로 스냅",
       "snapByDefaultDescription": "프로젝트를 열 때의 초기 스냅 상태를 설정합니다.",
@@ -126,8 +111,6 @@
       "deleteProxies": "프록시 삭제",
       "deleteProxiesDescription": "이 프로젝트용으로 생성된 프록시 동영상을 제거합니다",
       "deleted": "삭제됨",
-      "localAi": "로컬 AI",
-      "localAiDescription": "상주 런타임을 언로드하거나 캐시된 모델 다운로드를 지웁니다.",
       "clearCacheConfirmTitle": "프로젝트 캐시를 지우시겠습니까?",
       "clearCacheConfirmDescription": "현재 프로젝트({{count}}개 미디어 항목)의 캐시된 파형, 동영상 썸네일, GIF 프레임, 디코딩된 오디오를 삭제합니다. 필요할 때 자동으로 다시 생성됩니다. 프로젝트 데이터, 미디어 파일, 썸네일, 프록시는 영향을 받지 않습니다.",
       "clearCache": "캐시 지우기"

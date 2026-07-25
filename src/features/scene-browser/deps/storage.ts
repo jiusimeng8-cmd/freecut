@@ -6,10 +6,5 @@ export {
   getCaptionThumbnailBlob,
   saveCaptionThumbnail,
   probeCaptionThumbnail,
-  saveCaptionEmbeddings,
-  getCaptionEmbeddings,
   getCaptionsEmbeddingsMeta,
-  saveCaptionImageEmbeddings,
-  getCaptionImageEmbeddings,
-  getTranscript,
 } from '@/infrastructure/storage'

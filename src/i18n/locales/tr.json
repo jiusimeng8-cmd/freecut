@@ -87,21 +87,6 @@
       "uiSoundVoice": "Ses teması",
       "uiSoundPreview": "Önizleme"
     },
-    "ai": {
-      "captionSampleInterval": "Altyazı örnekleme aralığı",
-      "captionSampleIntervalDescription": "YZ ile Analiz et sırasında altyazı için karelerin ne sıklıkta örnekleneceği.",
-      "seconds": "Saniye",
-      "frames": "Kare",
-      "unitSec": "sn",
-      "unitFrames": "kare",
-      "enterIntervalAboveZero": "Sıfırdan büyük bir aralık girin.",
-      "captionEstimate": "{{fps}}fps hızında 1 dakikalık klip başına yaklaşık {{sceneCount}} {{scenes}}",
-      "scene_one": "sahne",
-      "scene_other": "sahne",
-      "captionIntervalHint": "{{estimate}}. Daha küçük aralıklar daha yoğun sahneler üretir ancak oluşturma daha uzun sürer.",
-      "defaultCaptionStyle": "Varsayılan altyazı stili",
-      "defaultCaptionStyleDescription": "Transkripsiyonlardan veya yapay zekâ altyazısından oluşturulan altyazılara uygulanan stil."
-    },
     "timeline": {
       "snapByDefault": "Varsayılan olarak yapıştır",
       "snapByDefaultDescription": "Bir proje açıldığında başlangıç yapıştırma durumunu ayarlar.",
@@ -126,8 +111,6 @@
       "deleteProxies": "Proxy'leri Sil",
       "deleteProxiesDescription": "Bu proje için oluşturulan proxy videolarını kaldır",
       "deleted": "Silindi",
-      "localAi": "Yerel YZ",
-      "localAiDescription": "Bellekte kalan çalışma zamanlarını boşalt veya önbelleğe alınmış model indirmelerini temizle.",
       "clearCacheConfirmTitle": "Proje önbelleği temizlensin mi?",
       "clearCacheConfirmDescription": "Bu işlem, mevcut projenin ({{count}} medya öğesi) önbelleğe alınmış dalga formlarını, film şeritlerini, GIF karelerini ve çözülmüş sesini siler. Gerektiğinde otomatik olarak yeniden oluşturulurlar. Proje verileriniz, medya dosyalarınız, küçük resimleriniz ve proxy'leriniz etkilenmez.",
       "clearCache": "Önbelleği Temizle"

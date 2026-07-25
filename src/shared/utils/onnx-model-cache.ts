@@ -11,7 +11,7 @@
  * Worker-safe: depends only on `caches`/`fetch`/`Response`, all available in workers.
  */
 
-export const ONNX_MODEL_CACHE_NAME = 'onnx-model-cache'
+const ONNX_MODEL_CACHE_NAME = 'onnx-model-cache'
 
 function getCacheStorage(): CacheStorage | null {
   if (typeof globalThis === 'undefined' || !('caches' in globalThis)) {
@@ -184,27 +184,4 @@ export function fetchOnnxModelBytes(url: string, onBytes?: ProgressFn): Promise<
   })
   inFlightModelBytes.set(url, { promise, listeners })
   return promise
-}
-
-/** Fetch a small text asset (vocab, etc.), serving from / populating Cache Storage. */
-export async function fetchOnnxModelText(url: string): Promise<string> {
-  const cache = await openCache()
-  const cached = cache ? await cache.match(url).catch(() => undefined) : undefined
-  if (cached) {
-    return cached.text()
-  }
-
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${url} (${response.status} ${response.statusText})`)
-  }
-  if (cache) {
-    await cache.put(url, response.clone()).catch(() => {})
-  }
-  return response.text()
-}
-
-/** Fetch a small JSON asset (config, tokenizer, voice style), with the same caching. */
-export async function fetchOnnxModelJson<T>(url: string): Promise<T> {
-  return JSON.parse(await fetchOnnxModelText(url)) as T
 }

@@ -107,107 +107,9 @@
         "swing": "Schwingen"
       }
     },
-    "tts": {
-      "seek": "Suchen",
-      "dialogTitle": "Audio aus Text generieren",
-      "dialogDescription": "Sprache erzeugen und an der Position des Textclips einfügen.",
-      "kokoroUnsupported": "WebGPU ist in diesem Browser nicht verfügbar. Kokoro TTS benötigt Chrome 113+, Edge 113+ oder Safari 26+.",
-      "mossUnsupported": "Browserverwalteter Speicher ist nicht verfügbar. MOSS mehrsprachiges TTS funktioniert am besten in einem aktuellen Chromium-Browser.",
-      "supertonicUnsupported": "Dieser Browser kann die lokale Supertonic-TTS-Laufzeit nicht ausführen. Versuche es mit einer aktuellen Version von Chrome oder Edge.",
-      "engine": "Engine",
-      "engineSupportDetails": "Details zur TTS-Engine-Unterstützung",
-      "kokoroDescription": "Englische Stimmen über WebGPU.",
-      "supertonicDescription": "Lokale ONNX-Stimmen in 31 Sprachen mit WebGPU oder WASM.",
-      "supportedLanguages": "Unterstützte Sprachen: {{languages}}.",
-      "kokoroOption": "Kokoro (Englisch, WebGPU)",
-      "mossOption": "MOSS Nano (20 Sprachen, CPU)",
-      "supertonicOption": "Supertonic 3 (31 Sprachen, lokales ONNX)",
-      "language": "Sprache",
-      "autoDetectLanguage": "Automatisch erkennen",
-      "voice": "Stimme",
-      "text": "Text",
-      "textPlaceholder": "Gib den Text ein, den du hören möchtest...",
-      "expressiveTags": "Ausdrucks-Tags",
-      "speed": "Geschwindigkeit",
-      "progressPreparing": "Lokales TTS wird vorbereitet...",
-      "insertedAndLinked": "Eingefügt und verknüpft",
-      "generate": "Generieren",
-      "generating": "Generieren...",
-      "regenerate": "Neu generieren",
-      "insertAndLink": "Einfügen und verknüpfen",
-      "inserting": "Einfügen...",
-      "errors": {
-        "openProject": "Öffne ein Projekt, bevor du Audio generierst.",
-        "enterText": "Gib Text zum Synthetisieren ein.",
-        "kokoroUnsupported": "WebGPU ist für Kokoro TTS erforderlich. Versuche Chrome 113+, Edge 113+ oder Safari 26+.",
-        "mossUnsupported": "Browserverwalteter Speicher ist für MOSS mehrsprachiges TTS erforderlich. Versuche einen aktuellen Chromium-Browser.",
-        "supertonicUnsupported": "Dieser Browser kann die lokale Supertonic-TTS-Laufzeit nicht ausführen. Versuche es mit einer aktuellen Version von Chrome oder Edge.",
-        "generateFailed": "Sprache konnte nicht generiert werden.",
-        "insertFailed": "Audio konnte nicht gespeichert und eingefügt werden."
-      },
-      "notifications": {
-        "addedAndLinked": "\"{{fileName}}\" wurde zur Timeline hinzugefügt und mit Text verknüpft.",
-        "savedNoTrack": "\"{{fileName}}\" wurde gespeichert, aber es ist keine Audiospur verfügbar."
-      }
-    },
-    "aiPanel": {
-      "textToSpeech": "Text zu Sprache",
-      "collapseTextToSpeech": "Text zu Sprache einklappen",
-      "expandTextToSpeech": "Text zu Sprache ausklappen",
-      "runsLocally": "{{runtime}} läuft lokal im Browser mit {{backend}}.",
-      "history": "Verlauf ({{count}}) - {{size}}",
-      "clearAll": "Alle löschen",
-      "musicGeneration": "Musik generieren",
-      "collapseMusicGeneration": "Musikgenerierung einklappen",
-      "expandMusicGeneration": "Musikgenerierung ausklappen",
-      "musicGenerationInfo": "Infos zur Musikgenerierung",
-      "musicgenDescription": "Verwendet Xenovas browserfähiges MusicGen-Modell über Transformers.js. Der erste Download ist groß, danach bleibt es lokal im Cache.",
-      "musicgenPromptHint": "Beschreibe Genre, Stimmung, Tempo und Instrumentierung. Kürzere Clips sind deutlich schneller fertig.",
-      "musicgenUnsupported": "WebGPU ist in diesem Browser nicht verfügbar. MusicGen benötigt Chrome 113+, Edge 113+ oder Safari 26+.",
-      "prompt": "Prompt",
-      "presets": "Vorgaben",
-      "musicPromptPlaceholder": "Beschreibe, welche Musik du erzeugen möchtest...",
-      "length": "Länge",
-      "generateMusic": "Musik generieren",
-      "musicHistory": "Musikverlauf ({{count}}) - {{size}}",
-      "remove": "Entfernen",
-      "saved": "Gespeichert",
-      "saving": "Speichern...",
-      "saveAndInsert": "Speichern und einfügen",
-      "saveToLibrary": "In Bibliothek speichern",
-      "progressPreparingMusic": "Lokale Musikgenerierung wird vorbereitet...",
-      "errors": {
-        "describeMusic": "Beschreibe die Musik, die du erzeugen möchtest.",
-        "musicgenUnsupported": "WebGPU ist für MusicGen erforderlich. Versuche Chrome 113+, Edge 113+ oder Safari 26+.",
-        "generateMusicFailed": "Musik konnte nicht generiert werden.",
-        "saveAudioFailed": "Audio konnte nicht in der Medienbibliothek gespeichert werden."
-      },
-      "notifications": {
-        "savedToLibrary": "\"{{fileName}}\" wurde in der Medienbibliothek gespeichert.",
-        "savedAndAdded": "\"{{fileName}}\" wurde gespeichert und zur Timeline hinzugefügt."
-      },
-      "defaultTtsPrompt": "Welcome to freecut. This voice was generated locally in the browser.",
-      "musicPresets": {
-        "lofiChillLabel": "Lo-fi Chill",
-        "lofiChillPrompt": "Warm lo-fi beat with dusty drums, mellow bass, and a dreamy synth lead",
-        "pop80sLabel": "80s Pop",
-        "pop80sPrompt": "80s pop track with bassy drums and synth",
-        "rock90sLabel": "90s Rock",
-        "rock90sPrompt": "90s rock song with loud guitars and heavy drums",
-        "upbeatEdmLabel": "Upbeat EDM",
-        "upbeatEdmPrompt": "A light and cheery EDM track, with syncopated drums, airy pads, and strong emotions bpm: 130",
-        "countryLabel": "Country",
-        "countryPrompt": "A cheerful country song with acoustic guitars",
-        "lofiElectroLabel": "Lo-fi Electro",
-        "lofiElectroPrompt": "Lofi slow bpm electro chill with organic samples"
-      }
-    },
     "clearKeyframesDialog": {
       "descriptionProperty": "{{property}}-Keyframes von {{count}} ausgewählten Element(en) löschen?",
       "descriptionAll": "Alle Keyframes von {{count}} ausgewählten Element(en) löschen?"
-    },
-    "localInferencePill": {
-      "jobs": "{{count}} Job(s)"
     },
     "subtitleSection": {
       "cueCount": "{{count}} Cue(s)"
@@ -288,10 +190,6 @@
         "remappedCount": "{{count}} neu zugeordnet",
         "ignoredCount": "{{count}} ignoriert",
         "customCount": "{{count}} benutzerdefiniert"
-      },
-      "localInference": {
-        "activeJobs": "{{count}} aktive Job(s)",
-        "unloadedToast": "{{count}} lokale Runtime(s) entladen."
       }
     }
   },
@@ -316,26 +214,12 @@
       "scopedTo": "Bereich: {{name}}",
       "scopedToAll": "Bereich: Alle Medien"
     },
-    "banners": {
-      "downloadingSemanticModel": "Semantisches Modell wird heruntergeladen (~22 MB, nur beim ersten Mal)...",
-      "indexingCaptions": "Untertitel für semantische Suche werden indexiert - {{current}}/{{total}} Clips",
-      "reanalyzing": "Analysiere <strong>{{label}}</strong> erneut - Szenen werden danach aktualisiert."
-    },
-    "analyze": {
-      "title": "Medien mit KI analysieren",
-      "button": "Analysieren",
-      "scope": "\"{{name}}\" analysieren",
-      "newMedia": "Neue Medien analysieren",
-      "reanalyzeAll": "Alles erneut analysieren"
-    },
     "view": {
       "list": "Listenansicht",
       "grid": "Rasteransicht"
     },
     "empty": {
       "noCaptionsTitle": "Noch keine KI-Untertitel.",
-      "noCaptionsPrefix": "Führe",
-      "noCaptionsSuffix": "für einen Clip aus der Medienbibliothek aus, um durchsuchbare Szenenuntertitel zu erzeugen.",
       "noMatchesTitle": "Keine Szenen passen zu deiner Suche.",
       "noMatchesPrefix": "Versuche eine kürzere Suche oder wechsle den Bereich zu"
     },
@@ -343,39 +227,23 @@
       "exitColorMode": "Farbmodus beenden",
       "colorTitle": "Nach Farbe suchen",
       "color": "Farbe",
-      "semanticTitle": "Semantische Suche (nach Bedeutung)",
       "keywordTitle": "Schlagwortsuche (exakte Übereinstimmung)",
-      "semanticLabel": "Semantische Suche",
       "keywordLabel": "Schlagwortsuche",
-      "semantic": "Semantisch",
       "keyword": "Schlagwort",
       "keywordDescription": "Exakte Worttreffer",
-      "semanticDescription": "Nach Bedeutung abgleichen",
       "clearReference": "Referenz löschen und andere Farbe wählen",
       "findingSimilarPalette": "Suche Szenen mit ähnlicher Palette...",
-      "semanticPlaceholder": "Nach Bedeutung suchen - \"Sonnenuntergang über Wasser\", \"lachende Menschen\"...",
       "keywordPlaceholder": "Szenen nach sichtbarem Inhalt suchen...",
       "clearSearch": "Suche löschen",
       "similarPaletteTo": "Ähnliche Palette wie {{label}} - zum Löschen klicken"
     },
-    "matchTiers": {
-      "strong": "Stark",
-      "good": "Gut",
-      "fair": "Okay"
-    },
     "match": {
       "keyword": "Schlagwort",
       "keywordHint": "Schlagworttreffer · Kosinus {{score}}",
-      "meaningWithTier": "Bedeutung · {{tier}}",
-      "textEmbeddingHint": "Text-Embedding-Kosinus: {{score}}",
-      "visualWithTier": "Visuell · {{tier}}",
-      "clipHint": "CLIP-Kosinus: {{score}}",
       "colorWithName": "Farbe · {{color}}",
       "paletteColorHint": "Palettentreffer für {{color}} (ΔE 2000)",
       "paletteDistance": "Palette · ΔE {{distance}}",
       "paletteDistanceHint": "Gewichteter Mittelwert ΔE 2000 zur Referenzpalette",
-      "belowThreshold": "Unter Schwellenwert",
-      "cosineHint": "Kosinus {{score}}",
       "top": "Top",
       "topHint": "Treffer mit höchster Bewertung"
     },

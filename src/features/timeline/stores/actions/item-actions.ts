@@ -252,7 +252,15 @@ export function linkItems(ids: string[]): boolean {
   return true
 }
 
-export function reverseItems(ids: string[]): void {
+export function reverseItems(
+  ids: string[],
+  reversed?: boolean,
+): {
+  itemIds: string[]
+  reversed: boolean
+  changed: boolean
+  handoffOpen: boolean
+} {
   const items = useItemsStore.getState().items
   const timelineFps = useTimelineSettingsStore.getState().fps
   const expandedIds = new Set<string>()
@@ -274,17 +282,32 @@ export function reverseItems(ids: string[]): void {
         item !== undefined && (item.type === 'video' || item.type === 'audio'),
     )
 
-  if (reversibleItems.length === 0) return
-  const shouldReverse = !reversibleItems.every((item) => item.isReversed === true)
+  const shouldReverse = reversed ?? !reversibleItems.every((item) => item.isReversed === true)
+  const itemsToChange = reversibleItems.filter(
+    (item) => (item.isReversed === true) !== shouldReverse,
+  )
+  if (itemsToChange.length === 0) {
+    return {
+      itemIds: reversibleItems.map((item) => item.id),
+      reversed: shouldReverse,
+      changed: false,
+      handoffOpen: false,
+    }
+  }
   if (shouldReverse) {
-    const videoItems = reversibleItems.filter((item) => item.type === 'video')
+    const videoItems = itemsToChange.filter((item) => item.type === 'video')
     if (videoItems.length > 0) {
       useReverseConformDialogStore.getState().open({
-        items: reversibleItems,
+        items: itemsToChange,
         videoItems,
         timelineFps,
       })
-      return
+      return {
+        itemIds: itemsToChange.map((item) => item.id),
+        reversed: true,
+        changed: false,
+        handoffOpen: true,
+      }
     }
   }
 
@@ -292,7 +315,7 @@ export function reverseItems(ids: string[]): void {
     'REVERSE_ITEMS',
     () => {
       const store = useItemsStore.getState()
-      for (const item of reversibleItems) {
+      for (const item of itemsToChange) {
         store._updateItem(item.id, {
           isReversed: shouldReverse ? true : undefined,
           ...(!shouldReverse && {
@@ -309,8 +332,14 @@ export function reverseItems(ids: string[]): void {
       }
       useTimelineSettingsStore.getState().markDirty()
     },
-    { ids: reversibleItems.map((item) => item.id), reversed: shouldReverse },
+    { ids: itemsToChange.map((item) => item.id), reversed: shouldReverse },
   )
+  return {
+    itemIds: itemsToChange.map((item) => item.id),
+    reversed: shouldReverse,
+    changed: true,
+    handoffOpen: false,
+  }
 }
 
 export function commitPreparedReverseItems(

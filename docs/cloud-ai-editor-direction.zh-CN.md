@@ -1,6 +1,7 @@
 # 云端 AI 剪辑器方向
 
-> 状态：开发阶段方案草案
+> 状态：历史方案，已由 `docs/agent-platform-execution.md` 的 Local Agent Host
+> 架构取代。本文仅保留早期决策背景，不作为当前实现合同。
 > 更新日期：2026-07-16
 
 ## 背景
@@ -20,6 +21,22 @@
 - AI 服务不可用时，不影响已有项目的手动编辑和导出。
 
 当前开发阶段优先验证产品能力和编辑闭环，不在编辑器中部署本地大模型。
+
+## 当前实施决策
+
+第一任务聚焦星光 AI 入口和工具执行闭环：
+
+- 星光入口直接挂载 Agent 对话界面。
+- 不再加载本地 Gemma Agent。
+- Web 版 AI 主界面不再挂载 Kokoro、MOSS、Supertonic 和 MusicGen。
+- 云端 Agent 使用 OpenAI-compatible Chat Completions 和原生 `tools/tool_calls`。
+- 连接通过 `BASE_URL`、`API_KEY`、`MODEL` 配置。
+- 查询类工具由客户端自动执行并将结果返回 Agent。
+- 修改类工具展示执行计划、状态和结果。
+- 提供仅当前会话有效的“自动执行”开关。
+- 普通离线剪辑、项目保存和本地导出不依赖云端 Agent。
+
+Skills 安装界面、Windows 系统 TTS 和完整工具覆盖不放入第一任务。
 
 ## 核心体验
 
@@ -43,7 +60,7 @@ Electron 客户端
 ├── AI 对话侧边栏
 ├── 编辑器 Tool Registry
 ├── 工具调用确认与撤销
-└── WebSocket 会话桥接
+└── OpenAI-compatible 客户端
           │
           ▼
 云端 AI 服务
@@ -181,6 +198,7 @@ src/
 ## 当前不做
 
 - 不在客户端部署本地大语言模型。
+- 不在 Web 版继续维护浏览器本地 TTS 和 MusicGen 入口。
 - 不同时开发移动端。
 - 不重写 FreeCut 时间线和渲染引擎。
 - 不一次性实现全部 ChatCut skills。
@@ -202,6 +220,9 @@ src/
 
 口播 MVP 稳定后，再逐步加入：
 
+- Skills 安装、更新、启用和卸载界面。
+- Electron Windows 客户端基础 TTS：优先 WinRT `SpeechSynthesizer`，必要时回退 SAPI，生成 WAV 后导入项目。
+- 高质量 TTS 和音乐生成作为收费云端 Skills。
 - 复杂字幕排版和关键词动画。
 - Motion Graphics。
 - 媒体特效和转场。

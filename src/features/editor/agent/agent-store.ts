@@ -1,18 +1,15 @@
-/**
- * UI + orchestration store for the editing agent. Drives the on-device model
- * load, the chat transcript, the proposed plan, and step-by-step execution.
- *
- * Flow: submit → (load model) → planning (streamed) → awaiting-confirm (if the
- * plan has steps) → running → idle. Every executed step runs through the
- * timeline facade, so each is independently undoable.
- */
-
 import { create } from 'zustand'
-import type { LlmMessage } from '@/infrastructure/llm'
-import { getAgentAdapter, planRequest, runStep, type PlannedStep } from './agent-service'
+import {
+  assertLocalAgentConfigured,
+  approveLocalAgentRun,
+  cancelLocalAgentRun,
+  readLocalAgentMessages,
+  runLocalAgent,
+  type LocalAgentRunResult,
+} from './agent-service'
 
 export type ModelStatus = 'idle' | 'loading' | 'ready' | 'error'
-export type AgentPhase = 'idle' | 'planning' | 'awaiting-confirm' | 'running'
+export type AgentPhase = 'idle' | 'running' | 'waiting-approval' | 'approving'
 export type PlanStepStatus = 'pending' | 'running' | 'done' | 'error'
 
 export interface ChatMessage {
@@ -21,189 +18,205 @@ export interface ChatMessage {
   content: string
 }
 
-export interface PlanStepState extends PlannedStep {
+/**
+ * Kept as a public type until the agent feature barrel is narrowed. The new
+ * local Host never creates or executes this browser-side plan.
+ */
+export interface PlanStepState {
+  tool: string
+  summary: string
   status: PlanStepStatus
+  handoff?: boolean
   result?: string
 }
 
-interface AgentState {
-  supported: boolean
-  modelStatus: ModelStatus
-  loadPercent: number
-  loadError: string | null
+export interface AgentRunState extends Omit<LocalAgentRunResult, 'status'> {
+  runId: string
+  status: LocalAgentRunResult['status'] | 'running'
+}
 
+interface AgentState {
+  projectId: string | null
+  modelStatus: ModelStatus
+  loadError: string | null
   messages: ChatMessage[]
   phase: AgentPhase
-  streamingText: string
-  plan: PlanStepState[] | null
+  localRun: AgentRunState | null
 
-  loadModel: () => Promise<void>
+  prepareAgent: () => Promise<void>
+  loadProjectConversation: (projectId: string) => Promise<void>
+  resetConnection: () => void
   submit: (text: string) => Promise<void>
-  runPlan: () => Promise<void>
-  dismissPlan: () => void
+  approve: () => Promise<void>
   cancel: () => void
   clearChat: () => void
 }
 
-let activeController: AbortController | null = null
+let activeRunId: string | null = null
 
 function newId(): string {
   return crypto.randomUUID()
 }
 
-/** Last few turns, mapped for the model; excludes the in-flight user message. */
-function buildHistory(messages: ChatMessage[]): LlmMessage[] {
-  return messages.slice(-6).map((message) => ({ role: message.role, content: message.content }))
+function failureMessage(error: unknown): string {
+  return error instanceof Error ? error.message : '本地 Agent 发生未知错误。'
+}
+
+function resultMessage(result: LocalAgentRunResult): string {
+  switch (result.status) {
+    case 'failed':
+      return result.assistantText ?? `请求失败：${result.errorCode ?? 'LOCAL_AGENT_FAILED'}`
+    case 'cancelled':
+      return '请求已取消。'
+    case 'uncertain':
+      return '执行状态不确定，时间线可能已被修改，请先检查当前项目。'
+    case 'lease_held':
+      return '当前时间线正由另一项本地 Agent 任务处理。'
+    default:
+      return ''
+  }
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
-  supported: getAgentAdapter().isSupported(),
+  projectId: null,
   modelStatus: 'idle',
-  loadPercent: 0,
   loadError: null,
-
   messages: [],
   phase: 'idle',
-  streamingText: '',
-  plan: null,
+  localRun: null,
 
-  loadModel: async () => {
-    const adapter = getAgentAdapter()
-    if (!adapter.isSupported()) {
-      set({ modelStatus: 'error', loadError: 'WebGPU is required to run the on-device assistant.' })
-      throw new Error('WebGPU unsupported')
+  loadProjectConversation: async (projectId) => {
+    if (get().projectId === projectId) return
+    activeRunId = null
+    set({
+      projectId,
+      messages: [],
+      phase: 'idle',
+      localRun: null,
+      loadError: null,
+    })
+
+    const messages = await readLocalAgentMessages(projectId)
+    if (get().projectId === projectId) {
+      set({ messages })
     }
-    if (get().modelStatus === 'ready') return
+  },
+
+  prepareAgent: async () => {
     set({ modelStatus: 'loading', loadError: null })
     try {
-      await adapter.load((progress) => set({ loadPercent: progress.percent }))
-      set({ modelStatus: 'ready', loadPercent: 100 })
+      assertLocalAgentConfigured()
+      set({ modelStatus: 'ready' })
     } catch (error) {
-      set({
-        modelStatus: 'error',
-        loadError: error instanceof Error ? error.message : 'Failed to load the model.',
-      })
+      const message = failureMessage(error)
+      set({ modelStatus: 'error', loadError: message })
       throw error
     }
   },
+
+  resetConnection: () => set({ modelStatus: 'idle', loadError: null }),
 
   submit: async (text) => {
     const trimmed = text.trim()
     if (!trimmed || get().phase !== 'idle') return
 
-    const history = buildHistory(get().messages)
-    const userMessage: ChatMessage = { id: newId(), role: 'user', content: trimmed }
-    set((state) => ({
-      messages: [...state.messages, userMessage],
-      phase: 'planning',
-      streamingText: '',
-      plan: null,
-    }))
-
     try {
-      await get().loadModel()
+      await get().prepareAgent()
     } catch {
-      set({ phase: 'idle' })
       return
     }
 
-    const controller = new AbortController()
-    activeController = controller
+    const projectId = get().projectId
+    const runId = newId()
+    activeRunId = runId
+    set((state) => ({
+      messages: [...state.messages, { id: newId(), role: 'user', content: trimmed }],
+      phase: 'running',
+      localRun: { runId, status: 'running' },
+      loadError: null,
+    }))
 
     try {
-      const result = await planRequest(trimmed, {
-        history,
-        signal: controller.signal,
-        onToken: (_delta, full) => set({ streamingText: full }),
+      const result = await runLocalAgent(trimmed, { projectId, runId })
+      if (activeRunId !== runId) return
+
+      const localRun: AgentRunState = { ...result, runId: result.runId ?? runId }
+      const statusMessage = resultMessage(result)
+      const messages = projectId ? await readLocalAgentMessages(projectId) : get().messages
+      if (activeRunId !== runId) return
+
+      set({
+        messages:
+          statusMessage && !messages.some((message) => message.content === statusMessage)
+            ? [...messages, { id: newId(), role: 'assistant', content: statusMessage }]
+            : messages,
+        phase: result.status === 'waiting_approval' ? 'waiting-approval' : 'idle',
+        localRun,
       })
-
-      const assistantMessage: ChatMessage = {
-        id: newId(),
-        role: 'assistant',
-        content: result.reply || 'Done.',
-      }
-      const hasSteps = result.steps.length > 0
-      set((state) => ({
-        messages: [...state.messages, assistantMessage],
-        streamingText: '',
-        phase: hasSteps ? 'awaiting-confirm' : 'idle',
-        plan: hasSteps
-          ? result.steps.map((step) => ({ ...step, status: 'pending' as const }))
-          : null,
-      }))
     } catch (error) {
-      if (controller.signal.aborted) {
-        set({ phase: 'idle', streamingText: '' })
-      } else {
-        const message = error instanceof Error ? error.message : 'Something went wrong.'
-        set((state) => ({
-          messages: [
-            ...state.messages,
-            { id: newId(), role: 'assistant', content: `Sorry — ${message}` },
-          ],
-          phase: 'idle',
-          streamingText: '',
-        }))
-      }
+      if (activeRunId !== runId) return
+      const message = `请求失败：${failureMessage(error)}`
+      set((state) => ({
+        messages: [...state.messages, { id: newId(), role: 'assistant', content: message }],
+        phase: 'idle',
+        localRun: {
+          runId,
+          status: 'failed',
+          errorCode: 'LOCAL_AGENT_IPC_FAILED',
+        },
+      }))
     } finally {
-      activeController = null
+      if (activeRunId === runId && get().phase !== 'waiting-approval') {
+        activeRunId = null
+      }
     }
-  },
-
-  runPlan: async () => {
-    const plan = get().plan
-    if (!plan || get().phase !== 'awaiting-confirm') return
-    set({ phase: 'running' })
-
-    const results: string[] = []
-    for (let index = 0; index < plan.length; index++) {
-      set((state) => ({
-        plan:
-          state.plan?.map((step, i) =>
-            i === index ? { ...step, status: 'running' as const } : step,
-          ) ?? null,
-      }))
-      const step = plan[index]
-      if (!step) continue
-      const result = await runStep(step)
-      results.push(`${result.ok ? '✓' : '✕'} ${result.message}`)
-      set((state) => ({
-        plan:
-          state.plan?.map((s, i) =>
-            i === index
-              ? {
-                  ...s,
-                  status: result.ok ? ('done' as const) : ('error' as const),
-                  result: result.message,
-                }
-              : s,
-          ) ?? null,
-      }))
-    }
-
-    set((state) => ({
-      messages: [
-        ...state.messages,
-        { id: newId(), role: 'assistant', content: results.join('\n') },
-      ],
-      phase: 'idle',
-    }))
-  },
-
-  dismissPlan: () => {
-    if (get().phase === 'running') return
-    set({ plan: null, phase: 'idle' })
   },
 
   cancel: () => {
-    activeController?.abort()
-    activeController = null
-    set({ phase: 'idle', streamingText: '' })
+    const runId = activeRunId ?? get().localRun?.runId
+    activeRunId = null
+    if (runId) {
+      void cancelLocalAgentRun(runId)
+    }
+    set((state) => ({
+      phase: 'idle',
+      localRun: runId
+        ? { runId, status: 'cancelled' }
+        : state.localRun,
+    }))
+  },
+
+  approve: async () => {
+    const runId = get().localRun?.runId
+    if (!runId || get().phase !== 'waiting-approval') return
+    set({ phase: 'approving' })
+    try {
+      const result = await approveLocalAgentRun(runId)
+      const projectId = get().projectId
+      const messages = projectId ? await readLocalAgentMessages(projectId) : get().messages
+      const statusMessage = resultMessage(result)
+      set({
+        messages:
+          statusMessage && !messages.some((message) => message.content === statusMessage)
+            ? [...messages, { id: newId(), role: 'assistant', content: statusMessage }]
+            : messages,
+        phase: 'idle',
+        localRun: { ...result, runId: result.runId ?? runId },
+      })
+    } catch (error) {
+      const message = `请求失败：${failureMessage(error)}`
+      set((state) => ({
+        messages: [...state.messages, { id: newId(), role: 'assistant', content: message }],
+        phase: 'idle',
+        localRun: { runId, status: 'failed', errorCode: 'LOCAL_AGENT_APPROVAL_FAILED' },
+      }))
+    } finally {
+      activeRunId = null
+    }
   },
 
   clearChat: () => {
-    activeController?.abort()
-    activeController = null
-    set({ messages: [], plan: null, phase: 'idle', streamingText: '' })
+    activeRunId = null
+    set({ messages: [], localRun: null, phase: 'idle' })
   },
 }))

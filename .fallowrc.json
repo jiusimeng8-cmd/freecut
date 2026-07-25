@@ -4,13 +4,15 @@
     "src/index.{ts,tsx,js,jsx}",
     "src/main.{ts,tsx,js,jsx}",
     "src/test/setup.ts",
+    "desktop/main.ts",
+    "desktop/preload.ts",
     "headless/probe.mjs",
     "headless/smoke.mjs",
     "headless/media-smoke.mjs"
   ],
   "ignorePatterns": [
     // Static reachability cannot see URL-loaded assets such as /sw.js
-    // and /moss-tts/moss_tts.worker.js.
+    // and other standalone browser workers.
     "public/**"
   ],
   "duplicates": {

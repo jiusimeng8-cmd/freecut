@@ -103,7 +103,7 @@ const CACHE_PREVIEW_AUDIO_FILENAME = 'preview-audio.wav'
 /** Single file per media under cache/waveform/. Header-indexed multi-res
  *  binary format for timeline waveform rendering. */
 const CACHE_WAVEFORM_MULTI_RES_FILENAME = 'multi-res.bin'
-/** Per-caption thumbnail JPEGs captured alongside LFM caption generation. */
+/** Per-caption thumbnail JPEGs stored alongside caption metadata. */
 const CACHE_CAPTION_THUMBS_DIR = 'captions-thumbs'
 /**
  * Legacy path for transcripts — was `cache/transcript.json` before AI outputs

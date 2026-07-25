@@ -1,16 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
-import {
-  BrainCircuit,
-  Check,
-  ChevronDown,
-  Filter,
-  LayoutGrid,
-  List,
-  Loader2,
-  Sparkles,
-  Wand2,
-} from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Check, ChevronDown, Filter, LayoutGrid, List, Search } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -27,14 +17,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/shared/ui/cn'
-import { importMediaAnalysisService, useMediaLibraryStore } from '../deps/media-library'
+import { useMediaLibraryStore } from '../deps/media-library'
 import {
   useSceneBrowserStore,
   type SceneBrowserSortMode,
   type SceneBrowserViewMode,
 } from '../stores/scene-browser-store'
 import { useRankedScenes } from '../hooks/use-ranked-scenes'
-import { useSemanticIndex } from '../hooks/use-semantic-index'
 import { SceneSearchField, SceneSearchModeButtons } from './scene-search-input'
 import { GlobalSceneRow, ScopedSceneRow } from './scene-row'
 import { GlobalSceneCard, ScopedSceneCard } from './scene-card'
@@ -50,6 +39,7 @@ const SORT_OPTIONS: Array<{ value: SceneBrowserSortMode; labelKey: string }> = [
   { value: 'name', labelKey: 'sceneBrowser.sort.name' },
 ]
 
+// fallow-ignore-next-line complexity
 export function SceneBrowserPanel({ className }: SceneBrowserPanelProps) {
   const { t } = useTranslation()
   const query = useSceneBrowserStore((s) => s.query)
@@ -66,17 +56,6 @@ export function SceneBrowserPanel({ className }: SceneBrowserPanelProps) {
     [mediaItems],
   )
 
-  const [analyzeBusy, setAnalyzeBusy] = useState(false)
-  const analyzableMedia = useMemo(
-    () =>
-      mediaItems.filter((m) => m.mimeType.startsWith('video/') || m.mimeType.startsWith('image/')),
-    [mediaItems],
-  )
-  const missingCount = useMemo(
-    () => analyzableMedia.filter((m) => (m.aiCaptions?.length ?? 0) === 0).length,
-    [analyzableMedia],
-  )
-
   const headerRef = useRef<HTMLDivElement | null>(null)
   const [headerWidth, setHeaderWidth] = useState<number>(Number.POSITIVE_INFINITY)
   useLayoutEffect(() => {
@@ -91,36 +70,12 @@ export function SceneBrowserPanel({ className }: SceneBrowserPanelProps) {
     return () => observer.disconnect()
   }, [])
 
-  // Two thresholds for compacting — buttons (Color/Keyword/Analyze) carry
-  // fixed-width labels and only need to collapse when genuinely cramped,
-  // but the scope `<Select>` shows arbitrary-length filenames in a 144px
-  // pill, so we collapse it earlier and much earlier when a specific
-  // media is picked (any real filename truncates in that width).
+  // The scope `<Select>` shows arbitrary-length filenames, so collapse it
+  // earlier when a specific media is selected.
   const compact = headerWidth < 360
   const compactScope = headerWidth < 440 || (scope !== null && headerWidth < 560)
 
-  const runAnalyze = useCallback(
-    async (kind: 'missing' | 'all' | 'scope', mediaId?: string) => {
-      if (analyzeBusy) return
-      setAnalyzeBusy(true)
-      try {
-        const { mediaAnalysisService } = await importMediaAnalysisService()
-        if (kind === 'scope' && mediaId) {
-          await mediaAnalysisService.analyzeMedia(mediaId)
-        } else if (kind === 'missing') {
-          await mediaAnalysisService.analyzeBatch({ onlyMissing: true })
-        } else {
-          await mediaAnalysisService.analyzeBatch({ onlyMissing: false })
-        }
-      } finally {
-        setAnalyzeBusy(false)
-      }
-    },
-    [analyzeBusy],
-  )
-
-  const { scenes, totalScenes, clipsWithCaptions, reanalyzingMedia, isQuerying } = useRankedScenes()
-  const indexProgress = useSemanticIndex()
+  const { scenes, totalScenes, clipsWithCaptions, isQuerying } = useRankedScenes()
 
   const scopedMedia = useMemo(
     () => (scope ? (mediaWithCaptions.find((m) => m.id === scope) ?? null) : null),
@@ -149,14 +104,6 @@ export function SceneBrowserPanel({ className }: SceneBrowserPanelProps) {
       <div ref={headerRef} className="flex flex-col gap-2 border-b border-border/50 px-3 py-2">
         <div className="flex items-center gap-2">
           <SceneSearchModeButtons compact={compact} />
-          <AnalyzeMenu
-            busy={analyzeBusy}
-            totalAnalyzable={analyzableMedia.length}
-            missingCount={missingCount}
-            scopedMedia={scopedMedia}
-            onRun={runAnalyze}
-            compact={compact}
-          />
           <div className="flex-1" />
           {compactScope ? (
             <CompactScopePicker
@@ -188,7 +135,7 @@ export function SceneBrowserPanel({ className }: SceneBrowserPanelProps) {
 
       <div className="flex items-center justify-between border-b border-border/30 px-3 py-1.5 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <Sparkles className="h-3 w-3 text-purple-400" />
+          <Search className="h-3 w-3" />
           {isFiltered
             ? `${t('sceneBrowser.counts.match', { count: scenes.length })} · ${scopeLabel}`
             : scopeLabel}
@@ -219,10 +166,6 @@ export function SceneBrowserPanel({ className }: SceneBrowserPanelProps) {
           clamped to viewport width so the scrollbar sits in its own column. */}
       <ScrollArea className="flex-1 min-h-0 mr-2 [&>[data-radix-scroll-area-viewport]>div]:!block">
         <div className={cn('pl-2 pr-3 py-2', viewMode === 'list' && 'space-y-0.5')}>
-          {reanalyzingMedia.length > 0 && <ReanalyzingBanner items={reanalyzingMedia} />}
-          {(indexProgress.indexTotal > 0 || indexProgress.loadingModel) && (
-            <SemanticIndexBanner progress={indexProgress} />
-          )}
           {hasResults ? (
             viewMode === 'grid' ? (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
@@ -243,49 +186,11 @@ export function SceneBrowserPanel({ className }: SceneBrowserPanelProps) {
                 />
               ))
             )
-          ) : reanalyzingMedia.length === 0 ? (
+          ) : (
             <EmptyState hasAnyCaptions={hasAnyCaptions} isFiltered={isFiltered} />
-          ) : null}
+          )}
         </div>
       </ScrollArea>
-    </div>
-  )
-}
-
-function SemanticIndexBanner({
-  progress,
-}: {
-  progress: { indexing: number; indexTotal: number; loadingModel: boolean }
-}) {
-  const { t } = useTranslation()
-  const label = progress.loadingModel
-    ? t('sceneBrowser.banners.downloadingSemanticModel')
-    : t('sceneBrowser.banners.indexingCaptions', {
-        current: progress.indexing,
-        total: progress.indexTotal,
-      })
-  return (
-    <div className="flex items-center gap-2 rounded-md border border-purple-400/20 bg-purple-400/5 px-3 py-2 text-[11px] text-purple-300/90">
-      <BrainCircuit className="h-3 w-3 shrink-0 animate-pulse" />
-      <span className="truncate">{label}</span>
-    </div>
-  )
-}
-
-function ReanalyzingBanner({ items }: { items: Array<{ id: string; fileName: string }> }) {
-  const { t } = useTranslation()
-  const label =
-    items.length === 1 ? items[0]!.fileName : t('sceneBrowser.counts.clip', { count: items.length })
-  return (
-    <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-primary/90">
-      <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-      <span className="truncate">
-        <Trans
-          i18nKey="sceneBrowser.banners.reanalyzing"
-          values={{ label }}
-          components={{ strong: <span className="font-medium" /> }}
-        />
-      </span>
     </div>
   )
 }
@@ -349,73 +254,6 @@ function CompactScopePicker({
   )
 }
 
-function AnalyzeMenu({
-  busy,
-  totalAnalyzable,
-  missingCount,
-  scopedMedia,
-  onRun,
-  compact,
-}: {
-  busy: boolean
-  totalAnalyzable: number
-  missingCount: number
-  scopedMedia: { id: string; fileName: string } | null
-  onRun: (kind: 'missing' | 'all' | 'scope', mediaId?: string) => void
-  compact?: boolean
-}) {
-  const { t } = useTranslation()
-  const disabled = totalAnalyzable === 0
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled || busy}
-          className={cn(
-            'flex h-6 items-center gap-1 rounded-md border px-2 text-[11px] transition-colors',
-            'border-border bg-secondary text-muted-foreground hover:text-foreground',
-            (disabled || busy) && 'cursor-not-allowed opacity-60',
-          )}
-          title={t('sceneBrowser.analyze.title')}
-          aria-label={t('sceneBrowser.analyze.title')}
-        >
-          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-          {!compact && t('sceneBrowser.analyze.button')}
-          <ChevronDown className="h-3 w-3 opacity-70" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        {scopedMedia && (
-          <>
-            <DropdownMenuItem onClick={() => onRun('scope', scopedMedia.id)}>
-              <Sparkles className="mr-2 h-3 w-3" />
-              <span className="truncate">
-                {t('sceneBrowser.analyze.scope', { name: scopedMedia.fileName })}
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
-        )}
-        <DropdownMenuItem onClick={() => onRun('missing')} disabled={missingCount === 0}>
-          <Sparkles className="mr-2 h-3 w-3" />
-          {t('sceneBrowser.analyze.newMedia')}
-          <span className="ml-auto text-[10px] text-muted-foreground">
-            {t('sceneBrowser.counts.clip', { count: missingCount })}
-          </span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onRun('all')} disabled={totalAnalyzable === 0}>
-          <Wand2 className="mr-2 h-3 w-3" />
-          {t('sceneBrowser.analyze.reanalyzeAll')}
-          <span className="ml-auto text-[10px] text-muted-foreground">
-            {t('sceneBrowser.counts.clip', { count: totalAnalyzable })}
-          </span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
 function ViewModeToggle({
   value,
   onChange,
@@ -471,13 +309,8 @@ function EmptyState({
   if (!hasAnyCaptions) {
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-12 text-center text-muted-foreground">
-        <Sparkles className="h-6 w-6 text-purple-400/60" />
+        <Search className="h-6 w-6" />
         <p className="text-[12px]">{t('sceneBrowser.empty.noCaptionsTitle')}</p>
-        <p className="max-w-xs text-[11px] text-muted-foreground/80">
-          {t('sceneBrowser.empty.noCaptionsPrefix')}{' '}
-          <span className="font-medium">{t('sceneBrowser.analyze.title')}</span>{' '}
-          {t('sceneBrowser.empty.noCaptionsSuffix')}
-        </p>
       </div>
     )
   }

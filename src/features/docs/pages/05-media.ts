@@ -4,8 +4,7 @@ const page = {
   order: 5,
   slug: 'media',
   title: 'Media Library',
-  description:
-    'Import media, inspect files, and generate proxies, transcripts, captions, and AI scene data.',
+  description: 'Import media, inspect files, and manage proxies, transcripts, and captions.',
   category: 'Core Editing',
   related: ['source-monitor', 'timeline', 'scene-browser', 'export'],
   sections: [
@@ -45,14 +44,14 @@ const page = {
           items: [
             'Open **Media info** to see codec, dimensions, duration, frame rate, file size, type, and transcript status.',
             'Double-click a media card, or use **Open In Source Monitor**, to preview a source before editing it in.',
-            'Media cards expose menus for File, Proxy, Transcript, Embedded captions, and AI actions.',
+            'Media cards expose menus for File, Proxy, Transcript, and Embedded captions.',
             'Sort, filter, and group assets by type when the library grows large.',
           ],
         },
       ],
     },
     {
-      title: 'Generate support data',
+      title: 'Manage support data',
       blocks: [
         {
           kind: 'table',
@@ -62,14 +61,10 @@ const page = {
               'Generate Proxy',
               'A lighter version of a heavy video for smoother editing; export still uses the original.',
             ],
-            ['Generate Transcript', 'Editable speech text you can search and turn into captions.'],
+            ['Existing Transcript', 'Editable speech text you can search and turn into captions.'],
             [
               'Extract Embedded Subtitles',
               'Subtitle tracks pulled from the file, ready to insert into the timeline.',
-            ],
-            [
-              'Analyze with AI',
-              'Local scene detection and captioning so clips become searchable in the Scene Browser.',
             ],
           ],
         },

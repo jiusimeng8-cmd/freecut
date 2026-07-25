@@ -1,7 +1,9 @@
 import { useMediaLibraryStore } from '@/features/media-library/stores/media-library-store'
 import { proxyService } from '@/features/media-library/services/proxy-service'
+import { getMediaSourceHandle } from '@/features/media-library/deps/storage'
 import { getSharedProxyKey } from '@/features/media-library/utils/proxy-key'
 import { blobUrlManager } from '@/infrastructure/browser/blob-url-manager'
+import { getDesktopFileUrl } from '@/infrastructure/storage/desktop-file-system-access'
 import { registerKeyframeIndex } from '@/shared/utils/keyframe-index-registry'
 import type { TimelineTrack } from '@/types/timeline'
 import { createLogger } from '@/shared/logging/logger'
@@ -15,10 +17,12 @@ const logger = createLogger('MediaResolver')
 const pendingRequests = new Map<string, Promise<string>>()
 
 /**
- * Resolves a mediaId to a blob URL for use in Composition Player
+ * Resolves a mediaId to a media URL for use in Composition Player.
+ * Desktop file handles use the Range-capable freecut-media:// URL directly;
+ * Web and non-handle storage keep the existing Blob URL path.
  *
  * @param mediaId - The ID of the media in the media library
- * @returns Blob URL for the media, or empty string if not found
+ * @returns A playable media URL, or empty string if not found
  */
 export async function resolveMediaUrl(mediaId: string): Promise<string> {
   // Check centralized manager first - URLs persist until explicit release
@@ -46,37 +50,54 @@ export async function resolveMediaUrl(mediaId: string): Promise<string> {
         return '' // Fallback: empty string (Composition will skip)
       }
 
-      // Get the source blob without an extra validation pass; getMediaFile
-      // surfaces permission/missing-file errors with the same relink UI.
-      const blob = await mediaLibraryService.getMediaFile(media)
+      let mediaUrl: string
+      const directFileHandle =
+        media.storageType === 'handle' && media.fileHandle
+          ? media.fileHandle
+          : media.storageType === 'workspace'
+            ? await getMediaSourceHandle(media.id)
+            : null
+      const desktopUrl = directFileHandle
+        ? await getDesktopFileUrl(directFileHandle).catch(() => null)
+        : null
 
-      if (!blob) {
-        // The media record exists but its bytes can't be resolved (no valid
-        // storage path — e.g. opened on an origin whose OPFS lacks it and the
-        // workspace folder has no copy). getMediaFile returns null WITHOUT a
-        // FileAccessError, so surface it into the broken-media system here so
-        // the clip shows a relink state and the missing-media dialog lights up.
-        logger.warn(`Media blob not found: ${mediaId}`)
-        useMediaLibraryStore.getState().markMediaBroken(mediaId, {
+      if (desktopUrl) {
+        // Resolve this before getMediaFile(): the File contract there requires
+        // materializing the complete source as a Blob.
+        mediaUrl = blobUrlManager.registerUrl(mediaId, desktopUrl)
+      } else {
+        // Get the source blob without an extra validation pass; getMediaFile
+        // surfaces permission/missing-file errors with the same relink UI.
+        const blob = await mediaLibraryService.getMediaFile(media)
+
+        if (!blob) {
+          // The media record exists but its bytes can't be resolved (no valid
+          // storage path — e.g. opened on an origin whose OPFS lacks it and the
+          // workspace folder has no copy). getMediaFile returns null WITHOUT a
+          // FileAccessError, so surface it into the broken-media system here so
+          // the clip shows a relink state and the missing-media dialog lights up.
+          logger.warn(`Media blob not found: ${mediaId}`)
+          useMediaLibraryStore.getState().markMediaBroken(mediaId, {
+            mediaId,
+            fileName: media.fileName ?? 'Unknown file',
+            errorType: 'file_missing',
+          })
+          return ''
+        }
+
+        // Acquire blob URL through centralized manager (handles caching + ref counting)
+        mediaUrl = blobUrlManager.acquire(mediaId, blob, {
           mediaId,
-          fileName: media.fileName ?? 'Unknown file',
-          errorType: 'file_missing',
+          storageType: media.storageType,
+          fileHandle: media.storageType === 'handle' ? media.fileHandle : undefined,
+          opfsPath: media.storageType === 'opfs' ? media.opfsPath : undefined,
+          fileSize: media.fileSize,
         })
-        return ''
       }
-
-      // Acquire blob URL through centralized manager (handles caching + ref counting)
-      const blobUrl = blobUrlManager.acquire(mediaId, blob, {
-        mediaId,
-        storageType: media.storageType,
-        fileHandle: media.storageType === 'handle' ? media.fileHandle : undefined,
-        opfsPath: media.storageType === 'opfs' ? media.opfsPath : undefined,
-        fileSize: media.fileSize,
-      })
 
       // Register keyframe index for adaptive seek backtracking
       if (media.keyframeTimestamps && media.keyframeTimestamps.length > 0) {
-        registerKeyframeIndex(blobUrl, media.keyframeTimestamps)
+        registerKeyframeIndex(mediaUrl, media.keyframeTimestamps)
       }
 
       // Resolved successfully — clear any stale broken flag (e.g. the repair
@@ -84,7 +105,7 @@ export async function resolveMediaUrl(mediaId: string): Promise<string> {
       // offline state without needing a reload.
       useMediaLibraryStore.getState().markMediaHealthy(mediaId)
 
-      return blobUrl
+      return mediaUrl
     } catch (error) {
       logger.error(`Failed to resolve media ${mediaId}:`, error)
 

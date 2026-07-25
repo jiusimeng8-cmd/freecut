@@ -107,107 +107,9 @@
         "swing": "Balançar"
       }
     },
-    "tts": {
-      "seek": "Buscar",
-      "dialogTitle": "Gerar áudio a partir de texto",
-      "dialogDescription": "Gere fala e insira na posição do clipe de texto.",
-      "kokoroUnsupported": "WebGPU não está disponível neste navegador. Kokoro TTS precisa do Chrome 113+, Edge 113+ ou Safari 26+.",
-      "mossUnsupported": "O armazenamento gerenciado pelo navegador não está disponível. O MOSS TTS multilíngue funciona melhor em um navegador Chromium recente.",
-      "engine": "Motor",
-      "engineSupportDetails": "Detalhes de suporte do motor TTS",
-      "kokoroDescription": "Vozes em inglês no WebGPU.",
-      "supportedLanguages": "Idiomas compatíveis: {{languages}}.",
-      "kokoroOption": "Kokoro (inglês, WebGPU)",
-      "mossOption": "MOSS Nano (20 idiomas, CPU)",
-      "voice": "Voz",
-      "text": "Texto",
-      "textPlaceholder": "Digite o texto que você quer ouvir...",
-      "speed": "Velocidade",
-      "progressPreparing": "Preparando TTS local...",
-      "insertedAndLinked": "Inserido e vinculado",
-      "generate": "Gerar",
-      "generating": "Gerando...",
-      "regenerate": "Gerar novamente",
-      "insertAndLink": "Inserir e vincular",
-      "inserting": "Inserindo...",
-      "errors": {
-        "openProject": "Abra um projeto antes de gerar áudio.",
-        "enterText": "Digite algum texto para sintetizar.",
-        "kokoroUnsupported": "WebGPU é necessário para Kokoro TTS. Tente Chrome 113+, Edge 113+ ou Safari 26+.",
-        "mossUnsupported": "O armazenamento gerenciado pelo navegador é necessário para MOSS TTS multilíngue. Tente um navegador Chromium recente.",
-        "generateFailed": "Falha ao gerar fala.",
-        "insertFailed": "Falha ao salvar e inserir áudio.",
-        "supertonicUnsupported": "Este navegador não consegue executar o runtime local do Supertonic TTS. Tente uma versão recente do Chrome ou Edge."
-      },
-      "notifications": {
-        "addedAndLinked": "\"{{fileName}}\" foi adicionado à linha do tempo e vinculado ao texto.",
-        "savedNoTrack": "\"{{fileName}}\" foi salvo, mas nenhuma faixa de áudio está disponível."
-      },
-      "supertonicUnsupported": "Este navegador não consegue executar o runtime local do Supertonic TTS. Tente uma versão recente do Chrome ou Edge.",
-      "supertonicDescription": "Vozes ONNX locais em 31 idiomas no WebGPU ou WASM.",
-      "supertonicOption": "Supertonic 3 (31 idiomas, ONNX local)",
-      "language": "Idioma",
-      "autoDetectLanguage": "Detectar automaticamente",
-      "expressiveTags": "Tags expressivas"
-    },
-    "aiPanel": {
-      "textToSpeech": "Texto para fala",
-      "collapseTextToSpeech": "Recolher texto para fala",
-      "expandTextToSpeech": "Expandir texto para fala",
-      "runsLocally": "{{runtime}} roda localmente no navegador em {{backend}}.",
-      "history": "Histórico ({{count}}) - {{size}}",
-      "clearAll": "Limpar tudo",
-      "musicGeneration": "Geração de música",
-      "collapseMusicGeneration": "Recolher geração de música",
-      "expandMusicGeneration": "Expandir geração de música",
-      "musicGenerationInfo": "Informações da geração de música",
-      "musicgenDescription": "Usa o modelo MusicGen da Xenova pronto para navegador via Transformers.js. O primeiro download é grande; depois ele fica em cache local.",
-      "musicgenPromptHint": "Descreva gênero, clima, tempo e instrumentos. Clipes mais curtos terminam muito mais rápido.",
-      "musicgenUnsupported": "WebGPU não está disponível neste navegador. MusicGen precisa do Chrome 113+, Edge 113+ ou Safari 26+.",
-      "prompt": "Comando",
-      "presets": "Predefinições",
-      "musicPromptPlaceholder": "Descreva o tipo de música que você quer gerar...",
-      "length": "Duração",
-      "generateMusic": "Gerar música",
-      "musicHistory": "Histórico de música ({{count}}) - {{size}}",
-      "remove": "Remover",
-      "saved": "Salvo",
-      "saving": "Salvando...",
-      "saveAndInsert": "Salvar e inserir",
-      "saveToLibrary": "Salvar na biblioteca",
-      "progressPreparingMusic": "Preparando geração local de música...",
-      "errors": {
-        "describeMusic": "Descreva a música que você quer gerar.",
-        "musicgenUnsupported": "WebGPU é necessário para MusicGen. Tente Chrome 113+, Edge 113+ ou Safari 26+.",
-        "generateMusicFailed": "Não foi possível gerar a música.",
-        "saveAudioFailed": "Não foi possível salvar o áudio na biblioteca de mídia."
-      },
-      "notifications": {
-        "savedToLibrary": "\"{{fileName}}\" foi salvo na biblioteca de mídia.",
-        "savedAndAdded": "\"{{fileName}}\" foi salvo e adicionado à linha do tempo."
-      },
-      "defaultTtsPrompt": "Welcome to freecut. This voice was generated locally in the browser.",
-      "musicPresets": {
-        "lofiChillLabel": "Lo-fi tranquilo",
-        "lofiChillPrompt": "Batida lo-fi quente com bateria vintage, baixo suave e lead de sintetizador sonhador",
-        "pop80sLabel": "Pop anos 80",
-        "pop80sPrompt": "Faixa pop dos anos 80 com bateria grave e sintetizador",
-        "rock90sLabel": "Rock anos 90",
-        "rock90sPrompt": "Música de rock dos anos 90 com guitarras altas e bateria pesada",
-        "upbeatEdmLabel": "EDM animado",
-        "upbeatEdmPrompt": "Faixa EDM leve e alegre, com bateria sincopada, pads aéreos e emoção forte bpm: 130",
-        "countryLabel": "Country / sertanejo",
-        "countryPrompt": "Música country alegre com violão acústico",
-        "lofiElectroLabel": "Lo-fi eletrônico",
-        "lofiElectroPrompt": "Lo-fi electro chill de BPM lento com samples orgânicos"
-      }
-    },
     "clearKeyframesDialog": {
       "descriptionProperty": "Limpar keyframes de {{property}} de {{count}} item(ns) selecionado(s)?",
       "descriptionAll": "Limpar todos os keyframes de {{count}} item(ns) selecionado(s)?"
-    },
-    "localInferencePill": {
-      "jobs": "{{count}} tarefa(s)"
     },
     "subtitleSection": {
       "cueCount": "{{count}} legenda(s)"
@@ -292,10 +194,6 @@
         "remappedCount": "{{count}} remapeados",
         "ignoredCount": "{{count}} ignorados",
         "customCount": "{{count}} personalizados"
-      },
-      "localInference": {
-        "activeJobs": "{{count}} tarefa(s) ativa(s)",
-        "unloadedToast": "{{count}} runtime(s) locais descarregados."
       }
     }
   },
@@ -320,26 +218,12 @@
       "scopedTo": "Escopo: {{name}}",
       "scopedToAll": "Escopo: todas as mídias"
     },
-    "banners": {
-      "downloadingSemanticModel": "Baixando modelo semântico (~22 MB, só na primeira execução)...",
-      "indexingCaptions": "Indexando legendas para busca semântica - {{current}}/{{total}} clipes",
-      "reanalyzing": "Reanalisando <strong>{{label}}</strong> - as cenas serão atualizadas ao terminar."
-    },
-    "analyze": {
-      "title": "Analisar mídia com IA",
-      "button": "Analisar",
-      "scope": "Analisar \"{{name}}\"",
-      "newMedia": "Analisar novas mídias",
-      "reanalyzeAll": "Reanalisar tudo"
-    },
     "view": {
       "list": "Visualização em lista",
       "grid": "Visualização em grade"
     },
     "empty": {
       "noCaptionsTitle": "Ainda não há legendas de IA.",
-      "noCaptionsPrefix": "Execute",
-      "noCaptionsSuffix": "em um clipe da biblioteca de mídia para gerar legendas de cenas pesquisáveis.",
       "noMatchesTitle": "Nenhuma cena corresponde à sua busca.",
       "noMatchesPrefix": "Tente uma busca mais curta ou altere o escopo para"
     },
@@ -347,39 +231,23 @@
       "exitColorMode": "Sair do modo de cor",
       "colorTitle": "Buscar por cor",
       "color": "Cor",
-      "semanticTitle": "Busca semântica (por significado)",
       "keywordTitle": "Busca por palavra-chave (correspondência exata)",
-      "semanticLabel": "Busca semântica",
       "keywordLabel": "Busca por palavra-chave",
-      "semantic": "Semântica",
       "keyword": "Palavra-chave",
       "keywordDescription": "Correspondências exatas de palavras",
-      "semanticDescription": "Combinar por significado",
       "clearReference": "Limpar referência e escolher outra cor",
       "findingSimilarPalette": "Procurando cenas com paleta semelhante...",
-      "semanticPlaceholder": "Buscar por significado - \"pôr do sol sobre a água\", \"pessoas rindo\"...",
       "keywordPlaceholder": "Buscar cenas pelo que você vê...",
       "clearSearch": "Limpar busca",
       "similarPaletteTo": "Paleta semelhante a {{label}} - clique para limpar"
     },
-    "matchTiers": {
-      "strong": "Forte",
-      "good": "Bom",
-      "fair": "Razoável"
-    },
     "match": {
       "keyword": "Palavra-chave",
       "keywordHint": "Correspondência de palavra-chave · cosseno {{score}}",
-      "meaningWithTier": "Significado · {{tier}}",
-      "textEmbeddingHint": "Cosseno do embedding de texto: {{score}}",
-      "visualWithTier": "Visual · {{tier}}",
-      "clipHint": "Cosseno CLIP: {{score}}",
       "colorWithName": "Cor · {{color}}",
       "paletteColorHint": "Correspondência de paleta em {{color}} (ΔE 2000)",
       "paletteDistance": "Paleta · ΔE {{distance}}",
       "paletteDistanceHint": "Média ponderada ΔE 2000 para a paleta de referência",
-      "belowThreshold": "Abaixo do limite",
-      "cosineHint": "cosseno {{score}}",
       "top": "Principal",
       "topHint": "Correspondência com maior pontuação"
     },

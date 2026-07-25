@@ -12,3 +12,7 @@ export const importJsonExportService = () =>
   import('@/features/project-bundle/services/json-export-service')
 export const importJsonImportService = () =>
   import('@/features/project-bundle/services/json-import-service')
+export const importBundleExportService = () =>
+  import('@/features/project-bundle/services/bundle-export-service')
+export const importBundleImportService = () =>
+  import('@/features/project-bundle/services/bundle-import-service')

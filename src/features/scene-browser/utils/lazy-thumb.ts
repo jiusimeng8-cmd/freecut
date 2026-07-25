@@ -8,7 +8,7 @@
  * Work is queued globally so we never spin up more than one HTMLVideoElement
  * at a time — 161-caption libraries can otherwise exhaust memory on long
  * clips. Images are handled via `fetch` + `createImageBitmap` (same as the
- * LFM provider's image path).
+ * stored caption image path).
  */
 
 import { createLogger } from '@/shared/logging/logger'
@@ -75,10 +75,8 @@ function cacheKey(mediaId: string, captionIndex: number): string {
 
 /**
  * Drop the memoized probe + generation results for every caption of
- * `mediaId` so a re-analyzed media starts from a clean slate. Queued
- * requests that haven't started yet are dropped; in-flight generations
- * are left to finish and are discarded at the write site via the
- * `taggingMediaIds` gate below.
+ * `mediaId` so removed or replaced captions start from a clean slate.
+ * Queued requests that have not started yet are dropped.
  */
 export function invalidateLazyThumbCache(mediaId: string): void {
   const prefix = `${mediaId}:`
@@ -186,10 +184,6 @@ async function generateOne(request: PendingRequest): Promise<string | null> {
   const state = useMediaLibraryStore.getState()
   const media = state.mediaById[mediaId]
   if (!media) return null
-  // A concurrent Analyze-with-AI run owns this media's thumbs for the
-  // duration of its sweep — skip lazy work so we don't race the main
-  // pipeline and clobber a fresh thumbnail with a stale one.
-  if (state.taggingMediaIds.has(mediaId)) return null
 
   const isImage = media.mimeType.startsWith('image/')
   const { mediaLibraryService } = await importMediaLibraryService()
@@ -234,11 +228,6 @@ async function generateOne(request: PendingRequest): Promise<string | null> {
       }
     }
 
-    // Re-check the tagging gate before writing — Analyze-with-AI may have
-    // started between our initial check and the slow seek + capture above.
-    if (useMediaLibraryStore.getState().taggingMediaIds.has(mediaId)) {
-      return null
-    }
     const cacheOptions = await getCaptionStorageOptions(mediaId)
     const relPath = await saveCaptionThumbnail(mediaId, captionIndex, jpeg, cacheOptions)
     patchStoreThumbPath(mediaId, captionIndex, relPath)

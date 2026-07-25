@@ -1,12 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { MediaTranscriptModel, MediaTranscriptQuantization } from '@/types/storage'
-import {
-  DEFAULT_WHISPER_LANGUAGE,
-  DEFAULT_WHISPER_MODEL,
-  DEFAULT_WHISPER_QUANTIZATION,
-  normalizeSelectableWhisperModel,
-} from '@/shared/utils/whisper-settings'
 import type { EditorDensityPresetName } from '@/config/editor-layout'
 import { DEFAULT_EDITOR_DENSITY_PRESET, normalizeEditorDensityPreset } from '@/config/editor-layout'
 import {
@@ -40,33 +33,11 @@ interface AppSettings {
   maxUndoHistory: number
   autoSaveInterval: number // minutes (0 = disabled)
 
-  // Whisper defaults
-  defaultWhisperModel: MediaTranscriptModel
-  defaultWhisperQuantization: MediaTranscriptQuantization
-  defaultWhisperLanguage: string
-
-  // AI captioning — interval between sampled frames when running LFM captions.
-  // Frames mode is converted to seconds at capture time using media.fps.
-  captioningIntervalUnit: CaptioningIntervalUnit
-  captioningIntervalValue: number
-
-  // Scene Browser — how caption search matches queries. `semantic` uses a
-  // sentence-transformer model to rank by meaning; `keyword` uses
-  // substring + fuzzy-prefix matching on caption text.
-  captionSearchMode: CaptionSearchMode
-
-  // Caption style preset id applied automatically to captions generated from
-  // transcripts / AI captioning (when not inheriting an existing caption's style).
+  // Caption style preset applied when an existing transcript is inserted as captions.
   defaultCaptionStylePresetId: string
 
   // Keyboard shortcuts
   hotkeyOverrides: HotkeyOverrideMap
-}
-
-export type CaptionSearchMode = 'keyword' | 'semantic'
-
-function normalizeCaptionSearchMode(value: unknown): CaptionSearchMode {
-  return value === 'semantic' ? 'semantic' : 'keyword'
 }
 
 const DEFAULT_CAPTION_STYLE_PRESET_ID = CAPTION_STYLE_PRESETS[0]?.id ?? 'netflix'
@@ -75,41 +46,6 @@ function normalizeCaptionStylePresetId(value: unknown): string {
   return typeof value === 'string' && CAPTION_STYLE_PRESETS.some((preset) => preset.id === value)
     ? value
     : DEFAULT_CAPTION_STYLE_PRESET_ID
-}
-
-export type CaptioningIntervalUnit = 'seconds' | 'frames'
-
-export const CAPTIONING_INTERVAL_BOUNDS = {
-  seconds: { min: 0.5, max: 60 },
-  frames: { min: 1, max: 1800 },
-} as const
-
-export const DEFAULT_CAPTIONING_INTERVAL_SECONDS = 3
-
-function normalizeCaptioningIntervalUnit(value: unknown): CaptioningIntervalUnit {
-  return value === 'frames' ? 'frames' : 'seconds'
-}
-
-function clampCaptioningIntervalValue(value: unknown, unit: CaptioningIntervalUnit): number {
-  const bounds = CAPTIONING_INTERVAL_BOUNDS[unit]
-  const fallback = unit === 'seconds' ? DEFAULT_CAPTIONING_INTERVAL_SECONDS : 90
-  const numeric = typeof value === 'number' && Number.isFinite(value) ? value : fallback
-  return Math.min(bounds.max, Math.max(bounds.min, numeric))
-}
-
-/**
- * Derive the effective `sampleIntervalSec` to pass to the captioning provider.
- * Frames mode divides by the source media FPS (falling back to 30 when the
- * media reports no usable frame rate).
- */
-export function resolveCaptioningIntervalSec(
-  unit: CaptioningIntervalUnit,
-  value: number,
-  fps: number,
-): number {
-  if (unit === 'seconds') return value
-  const effectiveFps = fps > 0 ? fps : 30
-  return value / effectiveFps
 }
 
 interface SettingsActions {
@@ -151,18 +87,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   maxUndoHistory: 50,
   autoSaveInterval: 5, // Auto-save every 5 min by default — guards against tab crashes / lost work
 
-  // Whisper defaults
-  defaultWhisperModel: DEFAULT_WHISPER_MODEL,
-  defaultWhisperQuantization: DEFAULT_WHISPER_QUANTIZATION,
-  defaultWhisperLanguage: DEFAULT_WHISPER_LANGUAGE,
-
-  // AI captioning defaults
-  captioningIntervalUnit: 'seconds',
-  captioningIntervalValue: DEFAULT_CAPTIONING_INTERVAL_SECONDS,
-
-  // Scene Browser defaults
-  captionSearchMode: 'keyword',
-
   // Caption styling default
   defaultCaptionStylePresetId: DEFAULT_CAPTION_STYLE_PRESET_ID,
 
@@ -184,28 +108,7 @@ export const useSettingsStore = create<SettingsStore>()(
       ...DEFAULT_SETTINGS,
 
       setSetting: (key, value) =>
-        set((state) => {
-          if (key === 'defaultWhisperModel') {
-            return { [key]: normalizeSelectableWhisperModel(value as MediaTranscriptModel) }
-          }
-          if (key === 'captioningIntervalUnit') {
-            const unit = normalizeCaptioningIntervalUnit(value)
-            return {
-              captioningIntervalUnit: unit,
-              captioningIntervalValue: clampCaptioningIntervalValue(
-                state.captioningIntervalValue,
-                unit,
-              ),
-            }
-          }
-          if (key === 'captioningIntervalValue') {
-            return {
-              captioningIntervalValue: clampCaptioningIntervalValue(
-                value,
-                state.captioningIntervalUnit,
-              ),
-            }
-          }
+        set(() => {
           if (key === 'editorDensity') {
             return { editorDensity: normalizeEditorDensityPreset(value) }
           }
@@ -289,43 +192,37 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'freecut-settings',
-      version: 2,
+      version: 3,
       // v1: auto-save now defaults on. Enable it for anyone persisted under the old
       // default (0 = disabled) so a crashed or closed tab can't lose a long edit.
       // After this one-time bump the user's choice is sticky again (toggle in
       // Settings → General).
-      // v2: Parakeet TDT is the new default ASR engine (~10x faster than Whisper base
-      // with native punctuation). Upgrade anyone still on the previous default
-      // ('whisper-base') so the speed win applies without manual opt-in; deliberate
-      // tiny/small/large choices are preserved.
+      // v3: remove persisted browser-local AI settings.
       migrate: (persistedState, version) => {
         let state = (persistedState as Partial<AppSettings> | undefined) ?? {}
         if (version < 1 && (state.autoSaveInterval == null || state.autoSaveInterval <= 0)) {
           state = { ...state, autoSaveInterval: 5 }
         }
-        if (version < 2 && state.defaultWhisperModel === 'whisper-base') {
-          state = { ...state, defaultWhisperModel: 'parakeet-tdt-v3' }
+        if (version < 3) {
+          const remaining = { ...state } as Record<string, unknown>
+          delete remaining.defaultWhisperModel
+          delete remaining.defaultWhisperQuantization
+          delete remaining.defaultWhisperLanguage
+          delete remaining.captioningIntervalUnit
+          delete remaining.captioningIntervalValue
+          delete remaining.captionSearchMode
+          state = remaining
         }
         return state
       },
       merge: (persistedState, currentState) => {
         const typedState = (persistedState as Partial<AppSettings> | undefined) ?? {}
-        const captioningIntervalUnit = normalizeCaptioningIntervalUnit(
-          typedState.captioningIntervalUnit,
-        )
 
         return {
           ...currentState,
           ...typedState,
-          defaultWhisperModel: normalizeSelectableWhisperModel(typedState.defaultWhisperModel),
           hotkeyOverrides: sanitizeHotkeyOverrides(typedState.hotkeyOverrides),
           editorDensity: normalizeEditorDensityPreset(typedState.editorDensity),
-          captioningIntervalUnit,
-          captioningIntervalValue: clampCaptioningIntervalValue(
-            typedState.captioningIntervalValue,
-            captioningIntervalUnit,
-          ),
-          captionSearchMode: normalizeCaptionSearchMode(typedState.captionSearchMode),
           defaultCaptionStylePresetId: normalizeCaptionStylePresetId(
             typedState.defaultCaptionStylePresetId,
           ),

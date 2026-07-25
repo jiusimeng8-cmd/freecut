@@ -8,7 +8,4 @@ export {
   startPreviewAudioConform,
   startPreviewAudioStartupWarm,
 } from '@/runtime/composition-runtime/utils/audio-decode-cache'
-export {
-  deletePreviewAudioConform,
-  resolvePreviewAudioConformUrl,
-} from '@/runtime/composition-runtime/utils/preview-audio-conform'
+export { deletePreviewAudioConform } from '@/runtime/composition-runtime/utils/preview-audio-conform'

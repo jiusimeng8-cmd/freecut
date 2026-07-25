@@ -1,5 +1,4 @@
 import type { MediaAttribution, MediaMetadata } from '@/types/storage'
-import type { TranscriptionProgressSnapshot } from '@/shared/utils/transcription-progress'
 import type { InterpolationStage } from './frame-interpolation-constants'
 import type { UpscaleStage } from './upscale-constants'
 
@@ -13,9 +12,7 @@ export interface MediaLibrarySelection {
   compositionIds: string[]
 }
 
-export type MediaTranscriptStatus = 'idle' | 'queued' | 'transcribing' | 'ready' | 'error'
-
-export type MediaTranscriptProgress = TranscriptionProgressSnapshot
+export type MediaTranscriptStatus = 'idle' | 'ready' | 'error'
 
 /**
  * Information about a file with an unsupported audio codec
@@ -107,25 +104,8 @@ export interface MediaLibraryState {
   /** Seconds left in the render. Absent until the rate estimate warms up. */
   upscaleEtaSeconds: Map<string, number>
 
-  // Transcript generation
+  // Existing transcript availability
   transcriptStatus: Map<string, MediaTranscriptStatus>
-  transcriptProgress: Map<string, MediaTranscriptProgress>
-
-  // AI tagging
-  taggingMediaIds: Set<string>
-  /**
-   * Deterministic progress for the currently running AI analysis run (single
-   * item or batch). Null when no analysis is in flight. `completed` counts
-   * finished items (success or failure); the background progress bar reads
-   * `completed / total` to draw a real percentage instead of an indeterminate
-   * pulse. `cancelRequested` is a soft stop — the service finishes the
-   * current item then skips the rest.
-   */
-  analysisProgress: {
-    total: number
-    completed: number
-    cancelRequested: boolean
-  } | null
 }
 
 export interface MediaLibraryActions {
@@ -257,21 +237,9 @@ export interface MediaLibraryActions {
     etaSeconds?: number | null,
   ) => void
 
-  // Transcript generation
+  // Existing transcript availability
   setTranscriptStatus: (mediaId: string, status: MediaTranscriptStatus) => void
-  setTranscriptProgress: (mediaId: string, progress: MediaTranscriptProgress) => void
-  clearTranscriptProgress: (mediaId: string) => void
 
-  // AI captioning
-  setTaggingMedia: (mediaId: string, active: boolean) => void
+  // Existing caption metadata
   updateMediaCaptions: (mediaId: string, captions: NonNullable<MediaMetadata['aiCaptions']>) => void
-
-  /** Start (or merge into) an analysis run — adds `count` to `total`. */
-  beginAnalysisRun: (count: number) => void
-  /** Increment the completed counter by one (or by `n`). */
-  incrementAnalysisCompleted: (n?: number) => void
-  /** Ask the current run to stop after the in-flight item. */
-  requestAnalysisCancel: () => void
-  /** Clear analysisProgress when the run is done. */
-  endAnalysisRun: () => void
 }

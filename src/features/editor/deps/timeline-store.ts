@@ -28,7 +28,6 @@ export {
   beginTextMotionEdit,
   commitTextMotionEdit,
   removeTextMotionEffect,
-  setEffectAudioPulse,
   bakeMotionToKeyframes,
   captureAnimationFromItem,
   getPresetCompatibility,

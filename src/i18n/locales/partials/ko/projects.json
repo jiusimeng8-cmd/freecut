@@ -324,33 +324,6 @@
       }
     },
     "settings": {
-      "localInference": {
-        "noRuntimes": "활성화되었거나 상주 중인 로컬 추론 런타임이 없습니다.",
-        "activeJobs_one": "활성 작업 {{count}}개",
-        "activeJobs_other": "활성 작업 {{count}}개",
-        "unloadedToast_one": "로컬 런타임 {{count}}개를 언로드했습니다",
-        "unloadedToast_other": "로컬 런타임 {{count}}개를 언로드했습니다",
-        "unloadFailed": "로컬 런타임을 언로드하지 못했습니다",
-        "unloadLabel": "로컬 모델 언로드",
-        "unloading": "언로드 중...",
-        "unloaded": "언로드됨",
-        "unload": "언로드"
-      },
-      "modelCache": {
-        "title": "로컬 AI 모델 캐시",
-        "description": "캐시된 모델 크기를 표시합니다. 모델을 지우면 다음에 새로 다운로드됩니다.",
-        "inspectFailed": "로컬 모델 캐시를 검사하지 못했습니다",
-        "clearedToast": "{{label}}을(를) 지웠습니다",
-        "alreadyEmptyToast": "{{label}}은(는) 이미 비어 있었습니다",
-        "clearFailed": "{{label}}을(를) 지우지 못했습니다",
-        "checking": "확인 중...",
-        "refresh": "새로 고침",
-        "inspectionUnavailable": "이 환경에서는 캐시 검사를 사용할 수 없습니다.",
-        "unavailable": "사용 불가",
-        "approxSize": "약 {{size}}",
-        "cleared": "지워짐",
-        "clear": "지우기"
-      },
       "hotkeys": {
         "title": "키보드 단축키",
         "subtitle": "— 명령을 선택한 다음 새 조합을 기록하세요",

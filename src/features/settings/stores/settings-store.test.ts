@@ -11,9 +11,6 @@ const DEFAULT_SETTINGS = {
   editorDensity: 'compact' as const,
   maxUndoHistory: 50,
   autoSaveInterval: 5,
-  defaultWhisperModel: 'parakeet-tdt-v3' as const,
-  defaultWhisperQuantization: 'hybrid' as const,
-  defaultWhisperLanguage: '',
 }
 
 describe('settings-store', () => {
@@ -27,29 +24,10 @@ describe('settings-store', () => {
       expect(useSettingsStore.getState().snapEnabled).toBe(false)
     })
 
-    it('updates string settings', () => {
-      useSettingsStore.getState().setSetting('defaultWhisperLanguage', 'en')
-      expect(useSettingsStore.getState().defaultWhisperLanguage).toBe('en')
-    })
-
     it('normalizes removed editor density presets back to compact', () => {
       useSettingsStore.getState().setSetting('editorDensity', 'default' as never)
 
       expect(useSettingsStore.getState().editorDensity).toBe('compact')
-    })
-
-    it('updates whisper defaults', () => {
-      useSettingsStore.getState().setSetting('defaultWhisperModel', 'whisper-small')
-      useSettingsStore.getState().setSetting('defaultWhisperQuantization', 'q8')
-
-      expect(useSettingsStore.getState().defaultWhisperModel).toBe('whisper-small')
-      expect(useSettingsStore.getState().defaultWhisperQuantization).toBe('q8')
-    })
-
-    it('normalizes legacy tiny model selections back to the default model', () => {
-      useSettingsStore.getState().setSetting('defaultWhisperModel', 'whisper-tiny')
-
-      expect(useSettingsStore.getState().defaultWhisperModel).toBe('parakeet-tdt-v3')
     })
 
     it('updates auto-save interval', () => {
@@ -69,8 +47,6 @@ describe('settings-store', () => {
       // Change several settings
       useSettingsStore.getState().setSetting('snapEnabled', false)
       useSettingsStore.getState().setSetting('autoSaveInterval', 10)
-      useSettingsStore.getState().setSetting('defaultWhisperModel', 'whisper-large')
-      useSettingsStore.getState().setSetting('defaultWhisperLanguage', 'es')
 
       // Reset
       useSettingsStore.getState().resetToDefaults()
@@ -79,8 +55,6 @@ describe('settings-store', () => {
       expect(state.snapEnabled).toBe(DEFAULT_SETTINGS.snapEnabled)
       expect(state.editorDensity).toBe(DEFAULT_SETTINGS.editorDensity)
       expect(state.autoSaveInterval).toBe(DEFAULT_SETTINGS.autoSaveInterval)
-      expect(state.defaultWhisperModel).toBe(DEFAULT_SETTINGS.defaultWhisperModel)
-      expect(state.defaultWhisperLanguage).toBe(DEFAULT_SETTINGS.defaultWhisperLanguage)
     })
   })
 

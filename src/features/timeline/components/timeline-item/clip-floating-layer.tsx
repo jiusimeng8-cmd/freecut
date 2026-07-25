@@ -1,4 +1,4 @@
-import { type ComponentProps, type RefObject } from 'react'
+import { type RefObject } from 'react'
 import { TrimInfoOverlay } from './trim-info-overlay'
 import { FloatingReadout } from './floating-readout'
 import { TrackPushHandle } from './track-push-handle'
@@ -7,12 +7,10 @@ import { EdgeHalos } from './edge-halos'
 import { TransitionDropGhost } from './transition-drop-ghost'
 import { AnchorDragGhost, FollowerDragGhost } from './drag-ghosts'
 import { DragBlockedTooltip } from './drag-blocked-tooltip'
-import { TranscribeDialogController } from './transcribe-dialog-controller'
 import type { OperationBoundsVisual } from './tool-operation-overlay-utils'
 import type { ActiveEdgeState } from './trim-constants'
 import type { TimelineItemPointerHint } from './use-timeline-item-pointer-handlers'
 import type { ClipTrimInfoLabel } from './use-clip-readout-labels'
-import type { CaptionDialogState } from './use-caption-dialog-state'
 
 interface ClipFloatingLayerProps {
   transformRef: RefObject<HTMLDivElement | null>
@@ -35,17 +33,13 @@ interface ClipFloatingLayerProps {
   left: number
   width: number
   pointerHint: TimelineItemPointerHint | null
-  itemMediaId: string | undefined
-  hasGeneratedCaptions: boolean
-  caption: CaptionDialogState
-  onGenerateCaption: ComponentProps<typeof TranscribeDialogController>['onGenerate']
 }
 
 /**
  * Overlays that anchor to a timeline clip but render as siblings outside its
  * `contain: paint` box: trim/move readouts, the track-push affordance, the
  * tool-operation bounds box, edge halos, the transition drop ghost, alt-drag
- * ghosts, the drag-blocked tooltip, and the transcription dialog controller.
+ * ghosts, and the drag-blocked tooltip.
  */
 export function ClipFloatingLayer({
   transformRef,
@@ -68,10 +62,6 @@ export function ClipFloatingLayer({
   left,
   width,
   pointerHint,
-  itemMediaId,
-  hasGeneratedCaptions,
-  caption,
-  onGenerateCaption,
 }: ClipFloatingLayerProps) {
   return (
     <>
@@ -126,12 +116,6 @@ export function ClipFloatingLayer({
       <FollowerDragGhost ref={ghostRef} left={left} width={width} />
 
       <DragBlockedTooltip hint={pointerHint} />
-      <TranscribeDialogController
-        itemMediaId={itemMediaId}
-        hasGeneratedCaptions={hasGeneratedCaptions}
-        caption={caption}
-        onGenerate={onGenerateCaption}
-      />
     </>
   )
 }

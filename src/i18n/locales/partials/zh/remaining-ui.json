@@ -107,107 +107,9 @@
         "swing": "摇摆"
       }
     },
-    "tts": {
-      "seek": "定位",
-      "dialogTitle": "从文本生成音频",
-      "dialogDescription": "生成语音并插入到文本剪辑的位置。",
-      "kokoroUnsupported": "此浏览器不支持 WebGPU. Kokoro TTS 需要 Chrome 113+, Edge 113+ 或 Safari 26+.",
-      "mossUnsupported": "此浏览器不支持浏览器管理的存储。MOSS 多语言 TTS 在较新的 Chromium 浏览器中效果最佳。",
-      "engine": "引擎",
-      "engineSupportDetails": "TTS 引擎支持详情",
-      "kokoroDescription": "基于 WebGPU 的英语语音。",
-      "supportedLanguages": "支持的语言：{{languages}}。",
-      "kokoroOption": "Kokoro (英语, WebGPU)",
-      "mossOption": "MOSS Nano (20 种语言, CPU)",
-      "voice": "语音",
-      "text": "文本",
-      "textPlaceholder": "输入你想听到朗读的文本...",
-      "speed": "速度",
-      "progressPreparing": "正在准备本地 TTS...",
-      "insertedAndLinked": "已插入并链接",
-      "generate": "生成",
-      "generating": "正在生成...",
-      "regenerate": "重新生成",
-      "insertAndLink": "插入并链接",
-      "inserting": "正在插入...",
-      "errors": {
-        "openProject": "生成音频前请先打开项目。",
-        "enterText": "请输入要合成的文本。",
-        "kokoroUnsupported": "Kokoro TTS 需要 WebGPU. 请尝试 Chrome 113+, Edge 113+ 或 Safari 26+.",
-        "mossUnsupported": "MOSS 多语言 TTS 需要浏览器管理的存储。请尝试较新的 Chromium 浏览器。",
-        "generateFailed": "无法生成语音。",
-        "insertFailed": "无法保存并插入音频。",
-        "supertonicUnsupported": "此浏览器无法运行本地 Supertonic TTS 运行时。请使用最新版 Chrome 或 Edge。"
-      },
-      "notifications": {
-        "addedAndLinked": "已将\"{{fileName}}\"添加到时间线并与文本链接。",
-        "savedNoTrack": "已保存\"{{fileName}}\"，但没有可用的音频轨道。"
-      },
-      "supertonicUnsupported": "此浏览器无法运行本地 Supertonic TTS 运行时。请使用最新版 Chrome 或 Edge。",
-      "supertonicDescription": "在 WebGPU 或 WASM 上运行的 31 种语言本地 ONNX 语音。",
-      "supertonicOption": "Supertonic 3（31 种语言，本地 ONNX）",
-      "language": "语言",
-      "autoDetectLanguage": "自动检测",
-      "expressiveTags": "表现标签"
-    },
-    "aiPanel": {
-      "textToSpeech": "文本转语音",
-      "collapseTextToSpeech": "折叠文本转语音",
-      "expandTextToSpeech": "展开文本转语音",
-      "runsLocally": "{{runtime}} 会在浏览器中通过 {{backend}} 本地运行。",
-      "history": "历史记录 ({{count}}) - {{size}}",
-      "clearAll": "全部清除",
-      "musicGeneration": "音乐生成",
-      "collapseMusicGeneration": "折叠音乐生成",
-      "expandMusicGeneration": "展开音乐生成",
-      "musicGenerationInfo": "音乐生成信息",
-      "musicgenDescription": "通过 Transformers.js 使用 Xenova 的浏览器版 MusicGen 模型。首次下载较大，之后会缓存在本地。",
-      "musicgenPromptHint": "请描述流派、情绪、速度和乐器。较短的片段会完成得更快。",
-      "musicgenUnsupported": "此浏览器不支持 WebGPU. MusicGen 需要 Chrome 113+, Edge 113+ 或 Safari 26+.",
-      "prompt": "提示词",
-      "presets": "预设",
-      "musicPromptPlaceholder": "描述你想生成的音乐类型...",
-      "length": "长度",
-      "generateMusic": "生成音乐",
-      "musicHistory": "音乐历史记录 ({{count}}) - {{size}}",
-      "remove": "移除",
-      "saved": "已保存",
-      "saving": "正在保存...",
-      "saveAndInsert": "保存并插入",
-      "saveToLibrary": "保存到库",
-      "progressPreparingMusic": "正在准备本地音乐生成...",
-      "errors": {
-        "describeMusic": "请描述你想生成的音乐。",
-        "musicgenUnsupported": "MusicGen 需要 WebGPU. 请尝试 Chrome 113+, Edge 113+ 或 Safari 26+.",
-        "generateMusicFailed": "无法生成音乐。",
-        "saveAudioFailed": "无法将音频保存到媒体库。"
-      },
-      "notifications": {
-        "savedToLibrary": "已将\"{{fileName}}\"保存到媒体库。",
-        "savedAndAdded": "已保存\"{{fileName}}\"并添加到时间线。"
-      },
-      "defaultTtsPrompt": "Welcome to freecut. This voice was generated locally in the browser.",
-      "musicPresets": {
-        "lofiChillLabel": "Lo-fi 放松",
-        "lofiChillPrompt": "温暖的 lo-fi 节拍，配有复古鼓点、柔和低音和梦幻合成器主旋律",
-        "pop80sLabel": "80 年代流行",
-        "pop80sPrompt": "80 年代流行曲，配有厚重鼓点和合成器",
-        "rock90sLabel": "90 年代摇滚",
-        "rock90sPrompt": "90 年代摇滚歌曲，配有响亮的吉他和厚重鼓点",
-        "upbeatEdmLabel": "欢快 EDM",
-        "upbeatEdmPrompt": "轻快愉快的 EDM 曲目，配有切分鼓点、空灵铺底和强烈情绪 bpm: 130",
-        "countryLabel": "乡村",
-        "countryPrompt": "一首欢快的乡村歌，配有原声吉他",
-        "lofiElectroLabel": "Lo-fi 电子",
-        "lofiElectroPrompt": "低速 lo-fi 电子\f，配有有机采样"
-      }
-    },
     "clearKeyframesDialog": {
       "descriptionProperty": "从所选 {{count}} 个项目清除 {{property}} 关键帧吗？",
       "descriptionAll": "从所选 {{count}} 个项目清除所有关键帧吗？"
-    },
-    "localInferencePill": {
-      "jobs": "{{count}} 个任务"
     },
     "subtitleSection": {
       "cueCount": "{{count}} 条字幕"
@@ -288,10 +190,6 @@
         "remappedCount": "已重新映射 {{count}} 个",
         "ignoredCount": "已忽略 {{count}} 个",
         "customCount": "{{count}} 个自定义"
-      },
-      "localInference": {
-        "activeJobs": "{{count}} 个活动任务",
-        "unloadedToast": "已卸载 {{count}} 个本地运行时。"
       }
     }
   },
@@ -316,26 +214,12 @@
       "scopedTo": "范围：{{name}}",
       "scopedToAll": "范围：所有媒体"
     },
-    "banners": {
-      "downloadingSemanticModel": "正在下载语义模型（约 22 MB，仅首次运行）...",
-      "indexingCaptions": "正在为语义搜索索引字幕 - {{current}}/{{total}} 个剪辑",
-      "reanalyzing": "正在重新分析 <strong>{{label}}</strong> - 完成后场景将刷新。"
-    },
-    "analyze": {
-      "title": "用 AI 分析媒体",
-      "button": "分析",
-      "scope": "分析\"{{name}}\"",
-      "newMedia": "分析新媒体",
-      "reanalyzeAll": "全部重新分析"
-    },
     "view": {
       "list": "列表视图",
       "grid": "网格视图"
     },
     "empty": {
       "noCaptionsTitle": "还没有 AI 字幕。",
-      "noCaptionsPrefix": "在媒体库中的剪辑上运行",
-      "noCaptionsSuffix": "以生成可搜索的场景字幕。",
       "noMatchesTitle": "没有场景与你的搜索匹配。",
       "noMatchesPrefix": "尝试更短的查询，或将范围切换到"
     },
@@ -343,39 +227,23 @@
       "exitColorMode": "退出颜色模式",
       "colorTitle": "按颜色搜索",
       "color": "颜色",
-      "semanticTitle": "语义搜索（按含义）",
       "keywordTitle": "关键词搜索（精确匹配）",
-      "semanticLabel": "语义搜索",
       "keywordLabel": "关键词搜索",
-      "semantic": "语义",
       "keyword": "关键词",
       "keywordDescription": "精确单词匹配",
-      "semanticDescription": "按含义匹配",
       "clearReference": "清除参考并选择其他颜色",
       "findingSimilarPalette": "正在查找具有相似调色板的场景...",
-      "semanticPlaceholder": "按含义搜索 - \"水面上的日落\"、\"大笑的人\"...",
       "keywordPlaceholder": "按所见内容搜索场景...",
       "clearSearch": "清除搜索",
       "similarPaletteTo": "与 {{label}} 相似的调色板 - 点击清除"
     },
-    "matchTiers": {
-      "strong": "强",
-      "good": "良好",
-      "fair": "一般"
-    },
     "match": {
       "keyword": "关键词",
       "keywordHint": "关键词匹配 · 余弦 {{score}}",
-      "meaningWithTier": "含义 · {{tier}}",
-      "textEmbeddingHint": "文本嵌入余弦：{{score}}",
-      "visualWithTier": "视觉 · {{tier}}",
-      "clipHint": "CLIP 余弦：{{score}}",
       "colorWithName": "颜色 · {{color}}",
       "paletteColorHint": "{{color}} 上的调色板匹配（ΔE 2000）",
       "paletteDistance": "调色板 · ΔE {{distance}}",
       "paletteDistanceHint": "与参考调色板的加权平均 ΔE 2000",
-      "belowThreshold": "低于阈值",
-      "cosineHint": "余弦 {{score}}",
       "top": "最佳",
       "topHint": "得分最高的匹配"
     },

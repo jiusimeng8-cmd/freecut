@@ -23,10 +23,6 @@ import {
 } from '../../utils/grade-clipboard-ops'
 import { PROPERTY_LABELS, type AnimatableProperty } from '@/types/keyframe'
 import type { PropertyKeyframes } from '@/types/keyframe'
-import {
-  getSceneVerificationModelOptions,
-  type VerificationModel,
-} from '@/features/timeline/deps/analysis'
 import { formatHotkeyBinding } from '@/config/hotkeys'
 import { useResolvedHotkeys } from '@/features/timeline/deps/settings'
 
@@ -61,20 +57,12 @@ type KeyframeActionsProps = ItemContextMenuSectionProps & {
 type SceneDetectionActionsProps = ItemContextMenuSectionProps & {
   canDetectScenes?: boolean
   isDetectingScenes?: boolean
-  sceneVerificationModelOptions: ReturnType<typeof getSceneVerificationModelOptions>
-  onDetectScenes?: (
-    method: 'histogram' | 'optical-flow',
-    verificationModel?: VerificationModel,
-  ) => void
+  onDetectScenes?: (method: 'histogram' | 'optical-flow') => void
 }
 
 type CaptionActionsProps = ItemContextMenuSectionProps & {
-  canManageCaptions?: boolean
-  hasCaptions?: boolean
-  isGeneratingCaptions?: boolean
   canExtractEmbeddedSubtitles?: boolean
   canConsolidateCaptionsToSegment?: boolean
-  onOpenCaptionDialog?: () => void
   onExtractEmbeddedSubtitles?: () => void
   onConsolidateCaptionsToSegment?: () => void
 }
@@ -95,12 +83,10 @@ type MediaActionsProps = ItemContextMenuSectionProps & {
   canRemoveSilence?: boolean
   canRemoveFillers?: boolean
   isRemovingFillers?: boolean
-  isTextItem?: boolean
   onReverse?: () => void
   onFreezeFrame?: () => void
   onRemoveSilence?: () => void
   onRemoveFillers?: () => void
-  onGenerateAudioFromText?: () => void
 }
 
 type LayoutActionsProps = ItemContextMenuSectionProps & {
@@ -130,7 +116,7 @@ type KeyframeActionsConfig = Omit<
 
 type SceneDetectionActionsConfig = Omit<
   SceneDetectionActionsProps,
-  keyof ItemContextMenuSectionProps | 'sceneVerificationModelOptions'
+  keyof ItemContextMenuSectionProps
 >
 
 type LayoutActionsConfig = {
@@ -274,8 +260,6 @@ const ItemContextMenuFull = memo(function ItemContextMenuFull({
     if (!keyframeActions?.keyframedProperties) return []
     return keyframeActions.keyframedProperties.filter((p) => p.keyframes.length > 0)
   }, [keyframeActions?.keyframedProperties])
-  const sceneVerificationModelOptions = useMemo(() => getSceneVerificationModelOptions(), [])
-
   useLayoutEffect(() => {
     if (!pendingActivation || !triggerRef.current) {
       return
@@ -310,12 +294,7 @@ const ItemContextMenuFull = memo(function ItemContextMenuFull({
         />
         {mediaActions && <MediaActions t={t} hotkeys={hotkeys} {...mediaActions} />}
         {sceneDetectionActions && (
-          <SceneDetectionActions
-            t={t}
-            hotkeys={hotkeys}
-            sceneVerificationModelOptions={sceneVerificationModelOptions}
-            {...sceneDetectionActions}
-          />
+          <SceneDetectionActions t={t} hotkeys={hotkeys} {...sceneDetectionActions} />
         )}
         {captionActions && <CaptionActions t={t} hotkeys={hotkeys} {...captionActions} />}
         <GradeActions t={t} />
@@ -502,12 +481,10 @@ function MediaActions({
   canRemoveSilence,
   canRemoveFillers,
   isRemovingFillers,
-  isTextItem,
   onReverse,
   onFreezeFrame,
   onRemoveSilence,
   onRemoveFillers,
-  onGenerateAudioFromText,
 }: MediaActionsProps) {
   return (
     <>
@@ -549,15 +526,6 @@ function MediaActions({
           <ContextMenuSeparator />
         </>
       )}
-
-      {isTextItem && onGenerateAudioFromText && (
-        <>
-          <ContextMenuItem onClick={onGenerateAudioFromText}>
-            {t('timeline.contextMenu.generateAudioFromText')}
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-        </>
-      )}
     </>
   )
 }
@@ -566,7 +534,6 @@ function SceneDetectionActions({
   t,
   canDetectScenes,
   isDetectingScenes,
-  sceneVerificationModelOptions,
   onDetectScenes,
 }: SceneDetectionActionsProps) {
   if (!canDetectScenes || !onDetectScenes) return null
@@ -584,14 +551,9 @@ function SceneDetectionActions({
             <ContextMenuItem onClick={() => onDetectScenes('histogram')}>
               {t('timeline.contextMenu.detectScenesFast')}
             </ContextMenuItem>
-            {sceneVerificationModelOptions.map((option) => (
-              <ContextMenuItem
-                key={option.value}
-                onClick={() => onDetectScenes('optical-flow', option.value)}
-              >
-                {t('timeline.contextMenu.detectScenesAi', { model: option.label })}
-              </ContextMenuItem>
-            ))}
+            <ContextMenuItem onClick={() => onDetectScenes('optical-flow')}>
+              {t('timeline.contextMenu.detectScenesOpticalFlow')}
+            </ContextMenuItem>
           </ContextMenuSubContent>
         </ContextMenuSub>
       )}
@@ -602,32 +564,13 @@ function SceneDetectionActions({
 
 function CaptionActions({
   t,
-  canManageCaptions,
-  hasCaptions,
-  isGeneratingCaptions,
   canExtractEmbeddedSubtitles,
   canConsolidateCaptionsToSegment,
-  onOpenCaptionDialog,
   onExtractEmbeddedSubtitles,
   onConsolidateCaptionsToSegment,
 }: CaptionActionsProps) {
-  const captionActionLabel = hasCaptions
-    ? t('timeline.contextMenu.regenerateCaptions')
-    : t('timeline.contextMenu.generateCaptions')
-
   return (
     <>
-      {canManageCaptions && onOpenCaptionDialog && (
-        <>
-          {isGeneratingCaptions ? (
-            <ContextMenuItem disabled>{t('timeline.contextMenu.updatingCaptions')}</ContextMenuItem>
-          ) : (
-            <ContextMenuItem onClick={onOpenCaptionDialog}>{captionActionLabel}</ContextMenuItem>
-          )}
-          <ContextMenuSeparator />
-        </>
-      )}
-
       {canExtractEmbeddedSubtitles && onExtractEmbeddedSubtitles && (
         <>
           <ContextMenuItem onClick={onExtractEmbeddedSubtitles}>

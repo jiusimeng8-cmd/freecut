@@ -9,7 +9,3 @@ export {
   listExportableSequences,
   type ExportableSequence,
 } from '@/features/timeline/stores/actions/export-snapshot'
-export {
-  collectReachableCompositionIdsFromItems,
-  collectReachableCompositionIdsFromTracks,
-} from '@/features/timeline/utils/composition-graph'

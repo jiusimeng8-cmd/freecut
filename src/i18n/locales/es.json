@@ -87,21 +87,6 @@
       "uiSoundVoice": "Tema de sonido",
       "uiSoundPreview": "Vista previa"
     },
-    "ai": {
-      "captionSampleInterval": "Intervalo de muestreo de subtítulos",
-      "captionSampleIntervalDescription": "Con qué frecuencia Analizar con IA toma un fotograma para subtitular.",
-      "seconds": "Segundos",
-      "frames": "Fotogramas",
-      "unitSec": "s",
-      "unitFrames": "fotogramas",
-      "enterIntervalAboveZero": "Introduce un intervalo mayor que cero.",
-      "captionEstimate": "~{{sceneCount}} {{scenes}} por clip de 1 min a {{fps}} fps",
-      "scene_one": "escena",
-      "scene_other": "escenas",
-      "captionIntervalHint": "{{estimate}}. Los intervalos más pequeños producen escenas más densas pero tardan más en generarse.",
-      "defaultCaptionStyle": "Estilo de subtítulos predeterminado",
-      "defaultCaptionStyleDescription": "Estilo aplicado a los subtítulos generados a partir de transcripciones o subtitulado con IA."
-    },
     "timeline": {
       "snapByDefault": "Ajuste por defecto",
       "snapByDefaultDescription": "Define el estado inicial del ajuste al abrir un proyecto.",
@@ -126,8 +111,6 @@
       "deleteProxies": "Eliminar proxies",
       "deleteProxiesDescription": "Elimina los vídeos proxy generados para este proyecto",
       "deleted": "Eliminado",
-      "localAi": "IA local",
-      "localAiDescription": "Descarga los runtimes residentes o borra las descargas de modelos en caché.",
       "clearCacheConfirmTitle": "¿Borrar la caché del proyecto?",
       "clearCacheConfirmDescription": "Esto eliminará las formas de onda, miniaturas de vídeo, fotogramas GIF y audio decodificado en caché del proyecto actual ({{count}} elementos multimedia). Se regenerarán automáticamente cuando sea necesario. Tus datos del proyecto, archivos multimedia, miniaturas y proxies no se verán afectados.",
       "clearCache": "Borrar caché"

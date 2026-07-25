@@ -25,7 +25,6 @@ import {
   validateMediaHandle,
 } from '@/infrastructure/storage'
 import { scanWorkspaceMediaHealth } from '../utils/workspace-health'
-import { mergeTranscriptionProgress } from '@/shared/utils/transcription-progress'
 
 const logger = createLogger('MediaLibraryStore')
 
@@ -152,13 +151,8 @@ const newStore: MediaLibraryStoreApi =
         upscaleStage: new Map(),
         upscaleEtaSeconds: new Map(),
 
-        // Transcript generation
+        // Existing transcript availability
         transcriptStatus: new Map(),
-        transcriptProgress: new Map(),
-
-        // AI tagging
-        taggingMediaIds: new Set(),
-        analysisProgress: null,
 
         // v3: Set current project context
         setCurrentProject: (projectId: string | null) => {
@@ -191,9 +185,6 @@ const newStore: MediaLibraryStoreApi =
             upscaleStage: new Map(),
             upscaleEtaSeconds: new Map(),
             transcriptStatus: new Map(),
-            transcriptProgress: new Map(),
-            taggingMediaIds: new Set(),
-            analysisProgress: null,
             dismissedMissingMediaIds: [],
             isScanningMediaHealth: false,
           })
@@ -252,10 +243,7 @@ const newStore: MediaLibraryStoreApi =
               )
 
             const transcriptStatus = await loadTranscriptStatusMap(mediaItems)
-            set({
-              transcriptStatus,
-              transcriptProgress: new Map(),
-            })
+            set({ transcriptStatus })
 
             event.set(
               'transcriptsReady',
@@ -541,38 +529,6 @@ const newStore: MediaLibraryStoreApi =
           })
         },
 
-        setTranscriptProgress: (mediaId, progress) => {
-          set((state) => {
-            const transcriptProgress = new Map(state.transcriptProgress)
-            transcriptProgress.set(
-              mediaId,
-              mergeTranscriptionProgress(transcriptProgress.get(mediaId), progress),
-            )
-            return { transcriptProgress }
-          })
-        },
-
-        clearTranscriptProgress: (mediaId) => {
-          set((state) => {
-            const transcriptProgress = new Map(state.transcriptProgress)
-            transcriptProgress.delete(mediaId)
-            return { transcriptProgress }
-          })
-        },
-
-        // AI tagging
-        setTaggingMedia: (mediaId, active) => {
-          set((state) => {
-            const taggingMediaIds = new Set(state.taggingMediaIds)
-            if (active) {
-              taggingMediaIds.add(mediaId)
-            } else {
-              taggingMediaIds.delete(mediaId)
-            }
-            return { taggingMediaIds }
-          })
-        },
-
         updateMediaCaptions: (mediaId, captions) => {
           set((state) => {
             const mediaItems = state.mediaItems.map((item) =>
@@ -580,54 +536,6 @@ const newStore: MediaLibraryStoreApi =
             )
             return { mediaItems }
           })
-        },
-
-        beginAnalysisRun: (count) => {
-          if (count <= 0) return
-          set((state) => {
-            const current = state.analysisProgress
-            if (!current) {
-              return { analysisProgress: { total: count, completed: 0, cancelRequested: false } }
-            }
-            // Merge concurrent runs (e.g. a per-card analyze while a batch is
-            // in flight) by growing the total so the percent keeps decreasing
-            // toward completion instead of snapping back.
-            return {
-              analysisProgress: {
-                total: current.total + count,
-                completed: current.completed,
-                cancelRequested: current.cancelRequested,
-              },
-            }
-          })
-        },
-
-        incrementAnalysisCompleted: (n = 1) => {
-          set((state) => {
-            if (!state.analysisProgress) return state
-            return {
-              analysisProgress: {
-                ...state.analysisProgress,
-                completed: Math.min(
-                  state.analysisProgress.total,
-                  state.analysisProgress.completed + n,
-                ),
-              },
-            }
-          })
-        },
-
-        requestAnalysisCancel: () => {
-          set((state) => {
-            if (!state.analysisProgress) return state
-            return {
-              analysisProgress: { ...state.analysisProgress, cancelRequested: true },
-            }
-          })
-        },
-
-        endAnalysisRun: () => {
-          set({ analysisProgress: null })
         },
       }),
       {

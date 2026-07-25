@@ -34,8 +34,6 @@ import {
   Copy,
   Check,
   Upload,
-  Sparkles,
-  FileText,
   ScanSearch,
   FileJson,
 } from 'lucide-react'
@@ -95,8 +93,6 @@ import { proxyService } from '../services/proxy-service'
 import { frameInterpolationService } from '../services/frame-interpolation-service'
 import { upscaleService } from '../services/upscale-service'
 import { importMediaLibraryService } from '../services/media-library-service-loader'
-import { cancelMediaTranscriptionJob } from '../services/media-transcription-runner'
-import { importMediaAnalysisService } from '../services/media-analysis-service-loader'
 import { getSupportedMediaFormatLabels } from '../utils/media-file-picker'
 import { getSharedProxyKey } from '../utils/proxy-key'
 import { getMediaType } from '../utils/validation'
@@ -282,7 +278,6 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
   const openMissingMediaDialog = useMediaLibraryStore((s) => s.openMissingMediaDialog)
   const projectStoreProjectId = useProjectStore((s) => s.currentProject?.id ?? null)
   const proxyStatus = useMediaLibraryStore((s) => s.proxyStatus)
-  const transcriptStatus = useMediaLibraryStore((s) => s.transcriptStatus)
   const filteredMediaItems = useFilteredMediaItems()
   const mediaGroups = useMemo(() => {
     const groups: {
@@ -456,8 +451,6 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
   )
 
   const {
-    analysisProgress,
-    analysisPercent,
     generatingCount,
     generatingAvgProgress,
     proxyItemRows,
@@ -470,12 +463,6 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
     upscalingAvgProgress,
     upscaleItemRows,
     upscaleEtaLabel,
-    transcribingCount,
-    transcribingAvgProgress,
-    singleTranscriptionStageLabel,
-    singleTranscriptionDetail,
-    singleTranscriptionIndeterminate,
-    transcriptionItemRows,
     preparationItemRows,
     preparingCount,
     preparingAvgProgress,
@@ -535,16 +522,6 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
       if (status === 'generating') {
         upscaleService.cancel(mediaId)
       }
-    }
-  }
-
-  const handleCancelAllTranscriptions = () => {
-    for (const [mediaId, status] of transcriptStatus.entries()) {
-      if (status !== 'queued' && status !== 'transcribing') {
-        continue
-      }
-
-      cancelMediaTranscriptionJob(mediaId)
     }
   }
 
@@ -1263,45 +1240,6 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
         )}
       </div>
 
-      {/* Background AI analysis status */}
-      {analysisProgress && (
-        <BackgroundTaskProgress
-          icon={<Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin flex-shrink-0" />}
-          label={
-            analysisProgress.total > 1
-              ? t('media.library.analyzingMultiple', {
-                  current: Math.min(analysisProgress.completed + 1, analysisProgress.total),
-                  total: analysisProgress.total,
-                })
-              : t('media.library.analyzingSingle')
-          }
-          progressAriaLabel={t('media.library.aiAnalysisProgress')}
-          progressPercent={analysisPercent}
-          meta={
-            <>
-              <span className="tabular-nums">{Math.round(analysisPercent)}%</span>
-              {!analysisProgress.cancelRequested ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void importMediaAnalysisService().then(({ mediaAnalysisService }) =>
-                      mediaAnalysisService.requestCancel(),
-                    )
-                  }}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {analysisProgress.total > 1 ? t('media.library.cancelAll') : t('common.cancel')}
-                </button>
-              ) : (
-                <span className="text-muted-foreground/80">{t('media.library.cancelling')}</span>
-              )}
-            </>
-          }
-          trailing={<Sparkles className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />}
-          fillClassName="bg-purple-500"
-        />
-      )}
-
       {/* Unified media readiness progress bar */}
       {preparingCount > 0 && (
         <BackgroundTaskProgress
@@ -1338,59 +1276,6 @@ export const MediaLibrary = memo(function MediaLibrary({ onMediaSelect }: MediaL
             </span>
           }
           fillClassName="bg-cyan-500"
-        />
-      )}
-
-      {/* Transcript generation progress bar */}
-      {transcribingCount > 0 && (
-        <BackgroundTaskProgress
-          icon={<FileText className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />}
-          // With one job the stage ("Downloading model") is far more useful than the generic
-          // title, and the panel is too narrow to show both without truncating each to noise.
-          label={
-            singleTranscriptionStageLabel ??
-            t('media.library.generatingTranscripts', { count: transcribingCount })
-          }
-          progressAriaLabel={t('media.library.transcriptGenerationProgress')}
-          progressPercent={transcribingAvgProgress * 100}
-          indeterminate={singleTranscriptionIndeterminate}
-          detailsToggleAriaLabel={t('media.library.perItemProgress')}
-          details={
-            transcriptionItemRows.length > 1
-              ? transcriptionItemRows.map((row) => (
-                  <div
-                    key={row.id}
-                    className="flex items-center justify-between gap-2 text-xs text-muted-foreground"
-                  >
-                    <span className="truncate">{row.name}</span>
-                    <span className="flex flex-shrink-0 items-center gap-2">
-                      {row.stage && <span className="hidden sm:inline">{row.stage}</span>}
-                      <span className="tabular-nums">{row.percent}%</span>
-                    </span>
-                  </div>
-                ))
-              : undefined
-          }
-          meta={
-            <>
-              {singleTranscriptionDetail && (
-                <span className="truncate tabular-nums">{singleTranscriptionDetail}</span>
-              )}
-              {/* The byte counter already says how far along the transfer is, and the fill bar
-                  shows it too; a percent as well only crowds out the counter in a narrow panel. */}
-              {!singleTranscriptionIndeterminate && !singleTranscriptionDetail && (
-                <span className="tabular-nums">{Math.round(transcribingAvgProgress * 100)}%</span>
-              )}
-              <button
-                type="button"
-                onClick={handleCancelAllTranscriptions}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t('media.library.cancelAll')}
-              </button>
-            </>
-          }
-          fillClassName="bg-blue-500"
         />
       )}
 

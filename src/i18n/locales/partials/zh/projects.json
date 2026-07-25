@@ -324,33 +324,6 @@
       }
     },
     "settings": {
-      "localInference": {
-        "noRuntimes": "没有处于活动或常驻状态的本地推理运行时。",
-        "activeJobs_one": "{{count}} 个活动任务",
-        "activeJobs_other": "{{count}} 个活动任务",
-        "unloadedToast_one": "已卸载 {{count}} 个本地运行时",
-        "unloadedToast_other": "已卸载 {{count}} 个本地运行时",
-        "unloadFailed": "卸载本地运行时失败",
-        "unloadLabel": "卸载本地模型",
-        "unloading": "正在卸载...",
-        "unloaded": "已卸载",
-        "unload": "卸载"
-      },
-      "modelCache": {
-        "title": "本地 AI 模型缓存",
-        "description": "显示已缓存模型的大小。清除模型可在下次强制重新下载。",
-        "inspectFailed": "检查本地模型缓存失败",
-        "clearedToast": "已清除 {{label}}",
-        "alreadyEmptyToast": "{{label}} 已经为空",
-        "clearFailed": "清除 {{label}} 失败",
-        "checking": "正在检查...",
-        "refresh": "刷新",
-        "inspectionUnavailable": "此环境中无法检查缓存。",
-        "unavailable": "不可用",
-        "approxSize": "约 {{size}}",
-        "cleared": "已清除",
-        "clear": "清除"
-      },
       "hotkeys": {
         "title": "键盘快捷键",
         "subtitle": "— 选择一个命令，然后录制新的组合键",

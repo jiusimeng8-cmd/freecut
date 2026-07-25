@@ -87,21 +87,6 @@
       "uiSoundVoice": "Sound-Thema",
       "uiSoundPreview": "Vorschau"
     },
-    "ai": {
-      "captionSampleInterval": "Untertitel-Abtastintervall",
-      "captionSampleIntervalDescription": "Wie oft „Mit KI analysieren\" ein Bild für Untertitel abtastet.",
-      "seconds": "Sekunden",
-      "frames": "Bilder",
-      "unitSec": "Sek.",
-      "unitFrames": "Bilder",
-      "enterIntervalAboveZero": "Gib ein Intervall größer als null ein.",
-      "captionEstimate": "~{{sceneCount}} {{scenes}} pro 1-Minuten-Clip bei {{fps}} fps",
-      "scene_one": "Szene",
-      "scene_other": "Szenen",
-      "captionIntervalHint": "{{estimate}}. Kleinere Intervalle erzeugen dichtere Szenen, brauchen aber länger zur Generierung.",
-      "defaultCaptionStyle": "Standard-Untertitelstil",
-      "defaultCaptionStyleDescription": "Stil für Untertitel, die aus Transkripten oder KI-Untertitelung erzeugt werden."
-    },
     "timeline": {
       "snapByDefault": "Standardmäßig einrasten",
       "snapByDefaultDescription": "Legt den anfänglichen Einrast-Status beim Öffnen eines Projekts fest.",
@@ -126,8 +111,6 @@
       "deleteProxies": "Proxys löschen",
       "deleteProxiesDescription": "Entfernt die für dieses Projekt generierten Proxy-Videos",
       "deleted": "Gelöscht",
-      "localAi": "Lokale KI",
-      "localAiDescription": "Lade speicherresidente Laufzeiten aus oder lösche zwischengespeicherte Modell-Downloads.",
       "clearCacheConfirmTitle": "Projekt-Cache leeren?",
       "clearCacheConfirmDescription": "Dadurch werden zwischengespeicherte Wellenformen, Video-Vorschaubilder, GIF-Bilder und dekodiertes Audio für das aktuelle Projekt ({{count}} Medienelemente) gelöscht. Sie werden bei Bedarf automatisch neu generiert. Deine Projektdaten, Mediendateien, Vorschaubilder und Proxys sind nicht betroffen.",
       "clearCache": "Cache leeren"

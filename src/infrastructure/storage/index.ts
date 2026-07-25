@@ -91,24 +91,17 @@ export {
 
 // AI captions (vision-language-model frame descriptions)
 export {
-  getCaptionsByContentHash,
   saveCaptions,
-  adoptCaptionsFromCache,
   deleteCaptions,
   saveCaptionThumbnail,
   getCaptionThumbnailBlob,
   probeCaptionThumbnail,
-  deleteCaptionThumbnails,
-  saveCaptionEmbeddings,
-  getCaptionEmbeddings,
   getCaptionsEmbeddingsMeta,
-  deleteCaptionEmbeddings,
-  saveCaptionImageEmbeddings,
-  getCaptionImageEmbeddings,
 } from '@/infrastructure/storage/workspace-fs/captions'
 
 // Media source files
 export {
+  getMediaSourceHandle,
   hasMediaSource,
   readMediaSource,
   writeMediaSource,

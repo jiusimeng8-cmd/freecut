@@ -1,4 +1,8 @@
-import type { CompositionInputProps, ExtendedExportSettings } from '@/types/export'
+import type {
+  CompositionInputProps,
+  ExtendedExportSettings,
+  NestedCompositionInput,
+} from '@/types/export'
 import type { TimelineTrack } from '@/types/timeline'
 import { framesToSeconds } from '@/shared/utils/time-utils'
 import { isGifUrl, isWebpUrl } from '@/shared/utils/media-utils'
@@ -49,48 +53,73 @@ export interface ExportPreflightResult {
   estimatedFileSizeBytes?: number
 }
 
-function hasAnimatedImage(tracks: TimelineTrack[]): boolean {
-  for (const track of tracks) {
-    for (const item of track.items ?? []) {
-      if (item.type !== 'image') continue
-      const label = item.label.toLowerCase()
-      if (
-        isGifUrl(item.src) ||
-        isWebpUrl(item.src) ||
-        label.endsWith('.gif') ||
-        label.endsWith('.webp')
-      ) {
-        return true
+function visitCompositionItems(
+  composition: CompositionInputProps,
+  visitor: (track: TimelineTrack, item: TimelineTrack['items'][number]) => boolean | void,
+): boolean {
+  const compositionById = new Map(
+    (composition.compositions ?? []).map((nestedComposition) => [
+      nestedComposition.id,
+      nestedComposition,
+    ]),
+  )
+  const visited = new Set<string>()
+  const visitTracks = (
+    tracks: TimelineTrack[],
+    itemsByTrack?: NestedCompositionInput['items'],
+  ): boolean => {
+    for (const track of tracks) {
+      const items = itemsByTrack
+        ? itemsByTrack.filter((item) => item.trackId === track.id)
+        : (track.items ?? [])
+      for (const item of items) {
+        if (visitor(track, item)) return true
+        const compositionId =
+          'compositionId' in item && typeof item.compositionId === 'string'
+            ? item.compositionId
+            : null
+        if (!compositionId || visited.has(compositionId)) continue
+        const nestedComposition = compositionById.get(compositionId)
+        if (!nestedComposition) continue
+        visited.add(compositionId)
+        if (visitTracks(nestedComposition.tracks, nestedComposition.items)) return true
       }
     }
+    return false
   }
-  return false
+  return visitTracks(composition.tracks ?? [])
 }
 
-function hasAudibleItem(tracks: TimelineTrack[]): boolean {
-  for (const track of tracks) {
-    if (track.muted) continue
-    for (const item of track.items ?? []) {
-      if (
-        (item.type === 'audio' || item.type === 'video') &&
-        (!('muted' in item) || item.muted !== true)
-      ) {
-        return true
-      }
-    }
-  }
-  return false
+function hasAnimatedImage(composition: CompositionInputProps): boolean {
+  return visitCompositionItems(composition, (_track, item) => {
+    if (item.type !== 'image') return false
+    const label = item.label.toLowerCase()
+    return (
+      isGifUrl(item.src) ||
+      isWebpUrl(item.src) ||
+      label.endsWith('.gif') ||
+      label.endsWith('.webp')
+    )
+  })
 }
 
-function collectTimelineMediaIds(tracks: TimelineTrack[]): Set<string> {
+function hasAudibleItem(composition: CompositionInputProps): boolean {
+  return visitCompositionItems(composition, (track, item) => {
+    if (track.muted) return false
+    return (
+      (item.type === 'audio' || item.type === 'video') &&
+      (!('muted' in item) || item.muted !== true)
+    )
+  })
+}
+
+function collectTimelineMediaIds(composition: CompositionInputProps): Set<string> {
   const mediaIds = new Set<string>()
-  for (const track of tracks) {
-    for (const item of track.items ?? []) {
-      if ('mediaId' in item && item.mediaId) {
-        mediaIds.add(item.mediaId)
-      }
+  visitCompositionItems(composition, (_track, item) => {
+    if ('mediaId' in item && item.mediaId) {
+      mediaIds.add(item.mediaId)
     }
-  }
+  })
   return mediaIds
 }
 
@@ -204,10 +233,10 @@ async function resolveSettingsForPreflight(
 
 async function assessVideoAudioCodec(
   clientSettings: ClientExportSettings,
-  tracks: TimelineTrack[],
+  composition: CompositionInputProps,
   audioEncoderSupported?: boolean,
 ): Promise<ExportPreflightCheck | null> {
-  if (clientSettings.mode !== 'video' || !hasAudibleItem(tracks)) return null
+  if (clientSettings.mode !== 'video' || !hasAudibleItem(composition)) return null
 
   const audioCodec = getDefaultAudioCodec(clientSettings.container)
   const isSupported =
@@ -254,8 +283,7 @@ export async function assessExportPreflight({
   const checks: ExportPreflightCheck[] = []
   const estimatedDurationSeconds = framesToSeconds(durationFrames, fps)
   const resolved = await resolveSettingsForPreflight(settings, fps, supportedVideoCodecs)
-  const tracks = composition.tracks ?? []
-  const referencedMediaIds = collectTimelineMediaIds(tracks)
+  const referencedMediaIds = collectTimelineMediaIds(composition)
   const brokenReferencedCount = brokenMediaIds.filter((mediaId) =>
     referencedMediaIds.has(mediaId),
   ).length
@@ -352,7 +380,7 @@ export async function assessExportPreflight({
 
   const audioCodecCheck = await assessVideoAudioCodec(
     resolved.clientSettings,
-    tracks,
+    composition,
     audioEncoderSupported,
   )
   if (audioCodecCheck) checks.push(audioCodecCheck)
@@ -368,7 +396,7 @@ export async function assessExportPreflight({
       detailKey: 'export.preflight.checks.worker-unavailable-fallback.detail',
       fixKey: 'export.preflight.checks.worker-unavailable-fallback.fix',
     })
-  } else if (resolved.clientSettings.mode === 'video' && hasAnimatedImage(tracks)) {
+  } else if (resolved.clientSettings.mode === 'video' && hasAnimatedImage(composition)) {
     predictedRenderPath = 'main-thread'
     checks.push({
       id: 'worker-animated-image-fallback',
@@ -377,7 +405,7 @@ export async function assessExportPreflight({
       detailKey: 'export.preflight.checks.worker-animated-image-fallback.detail',
       fixKey: 'export.preflight.checks.worker-animated-image-fallback.fix',
     })
-  } else if (hasAudibleItem(tracks) && !offlineAudioContextAvailable) {
+  } else if (hasAudibleItem(composition) && !offlineAudioContextAvailable) {
     predictedRenderPath = 'main-thread'
     checks.push({
       id: 'worker-audio-context-fallback',

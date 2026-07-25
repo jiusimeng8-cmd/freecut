@@ -71,7 +71,10 @@ export interface TimelineActions {
     tracks: TimelineTrack[],
     updates: Array<{ id: string; from: number; trackId?: string }>,
   ) => void
-  duplicateItems: (itemIds: string[], positions: Array<{ from: number; trackId: string }>) => void
+  duplicateItems: (
+    itemIds: string[],
+    positions: Array<{ from: number; trackId: string }>,
+  ) => TimelineItem[]
   duplicateItemsWithTrackChanges: (
     tracks: TimelineTrack[],
     itemIds: string[],
@@ -81,7 +84,10 @@ export interface TimelineActions {
   trimItemEnd: (id: string, trimAmount: number) => void
   rollingTrimItems: (leftId: string, rightId: string, editPointDelta: number) => void
   rippleTrimItem: (id: string, handle: 'start' | 'end', trimDelta: number) => void
-  splitItem: (id: string, splitFrame: number) => void
+  splitItem: (
+    id: string,
+    splitFrame: number,
+  ) => { leftItem: TimelineItem; rightItem: TimelineItem } | null
   splitItemAtFrames: (id: string, splitFrames: number[]) => number
   removeSilenceFromItems: (
     itemIds: string[],

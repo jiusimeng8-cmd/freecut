@@ -2,17 +2,22 @@
 
 **[freecut.net](http://freecut.net/)**
 
-**Edit videos. In your browser.**
+**Local-first video editing with a desktop Agent.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-Join%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/aQtQ7NyUBd)
 
 ![FreeCut editor workspace](./public/assets/landing/main.png)
 
-FreeCut is a browser-based, multi-track video editor. No install, no uploads:
-projects and media stay local, while editing, preview, analysis, transcription,
-AI generation, and export run in the browser through WebGPU, WebCodecs, Web
-Workers, OPFS, and the File System Access API.
+FreeCut is a local-first, multi-track video editor with a Web Renderer and an
+Electron desktop runtime. Projects, linked media, editing state, preview, and
+export stay on the user's machine.
+
+The desktop app adds the Local Agent Host, MCP tools, safeStorage-backed
+credentials, FFmpeg services, approval, and controlled timeline writes. When a
+user enables cloud Agent, ASR, or multimodal analysis, only the task-required
+message, selected audio, frames, or proxies are sent to the configured provider.
+Manual editing and local export do not require those services.
 
 FreeCut writes projects, linked media metadata, thumbnails, waveforms, generated
 AI assets, transcripts, scene cuts, and caches as plain files inside a workspace
@@ -25,7 +30,7 @@ New to FreeCut? Start with the [user guide](https://freecut.net/docs).
 ## Community
 
 Join the [FreeCut Discord](https://discord.gg/aQtQ7NyUBd) to share edits,
-request features, report bugs, and give feedback on browser-based editing workflows.
+request features, report bugs, and give feedback on editing workflows.
 
 ## Screenshots
 
@@ -43,7 +48,7 @@ request features, report bugs, and give feedback on browser-based editing workfl
   <tr>
     <td width="50%">
       <strong>Semantic scene search</strong><br />
-      <img src="./public/assets/landing/semantic.png" alt="FreeCut semantic scene browser" width="100%" />
+      <img src="./public/assets/landing/semantic.png" alt="FreeCut scene browser" width="100%" />
     </td>
     <td width="50%">
       <strong>Export</strong><br />
@@ -126,17 +131,15 @@ All visual effects and compositing paths are WebGPU-first, with fallbacks where 
 - Apple ProRes decode for import, preview, and thumbnails, including variants browsers cannot natively decode
 - Proxy generation, thumbnail extraction, waveform caching, and media relinking
 
-### Local AI & Analysis
+### Agent & Analysis
 
-Runs on-device in the browser — nothing is uploaded.
-
-- On-device transcription with the Parakeet engine (Whisper fallback) and generated caption text items
-- AI captioning with local vision-language providers and configurable sample cadence
-- Scene detection with histogram, optical-flow, and optional model verification workflows
-- Scene Browser for searching captioned media and reusing detected moments
-- Local Kokoro text-to-speech voiceovers
-- Local MusicGen music generation with presets, progress, and cancellation
-- Local model cache controls and unload controls in settings
+- Electron Local Agent Host with persistent Thread, Run, Event, and ToolReceipt history
+- Dynamic MCP discovery across project, media, timeline, color, captions, export, and diagnostics tools
+- Profile-based cloud model routing without hard-coding a provider or model in the editor
+- Controlled timeline writes with approval, lease, fencing, idempotency, and readback
+- Optional cloud ASR and multimodal analysis for explicitly selected task inputs
+- Scene detection with histogram and optical-flow workflows
+- Scene Browser for searching existing caption and scene data
 
 ### Projects & Storage
 
@@ -159,16 +162,24 @@ Runs on-device in the browser — nothing is uploaded.
 
 ## Quick Start
 
-**Prerequisites:** Node.js 22+ recommended, npm 11+, and a modern Chromium browser.
+**Prerequisites:** Node.js 22+, npm 11+, and Windows for the current Electron
+desktop build. A modern Chromium browser can run the Web editor without the
+Local Agent Host.
 
 ```bash
-git clone https://github.com/walterlow/freecut.git
+git clone https://github.com/jiusimeng8-cmd/freecut.git
 cd freecut
 npm install
 npm run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in Chrome, Edge, Brave, or Arc.
+For the desktop runtime, use an isolated workspace:
+
+```powershell
+$env:FREECUT_DEV_WORKSPACE = 'C:\tmp\freecut-dev-workspace'
+npm run desktop:dev
+```
 
 ### Workflow
 
@@ -176,14 +187,15 @@ Open [http://localhost:5173](http://localhost:5173) in Chrome, Edge, Brave, or A
 2. Create a project from the projects page.
 3. Import media by dragging files into the media library.
 4. Drag clips to the timeline, then trim, arrange, add effects, transitions, masks, captions, and audio work.
-5. Use the source monitor, keyframe editor, scene browser, AI tools, and preview overlays as needed.
+5. Use the source monitor, keyframe editor, scene browser, and preview overlays as needed.
 6. Export directly from the browser.
 
 ## Browser Support
 
 Chrome or Edge 113+ is recommended. FreeCut depends on WebGPU, WebCodecs, OPFS,
 and the File System Access API, so a modern Chromium browser is required for the
-full workflow.
+Web editing workflow. The Local Agent Host and its protected MCP writes require
+the Electron desktop app.
 
 ### Brave
 
@@ -196,6 +208,7 @@ Brave may disable the File System Access API. To enable it:
 ## Tech Stack
 
 - [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- [Electron](https://www.electronjs.org/) for the desktop host, safeStorage, IPC, updates, and local services
 - [Vite+](https://github.com/voidzero-dev/vite-plus) for dev, build, lint, format, check, and tests
 - [Vite](https://vite.dev/) + [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react)
 - [WebGPU](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API) for effects, compositing, transitions, masks, scopes, and AI acceleration
@@ -205,8 +218,6 @@ Brave may disable the File System Access API. To enable it:
 - [TanStack Router](https://tanstack.com/router) for file-based, type-safe routing
 - [Tailwind CSS 4](https://tailwindcss.com/) + [Radix UI](https://www.radix-ui.com/) + shadcn-style components
 - [Mediabunny](https://mediabunny.dev/) for media decoding, metadata, and audio encoding support
-- [Transformers.js](https://huggingface.co/docs/transformers.js) for local browser AI models
-- [Kokoro.js](https://www.npmjs.com/package/kokoro-js) for WebGPU text-to-speech
 - Web Workers and AudioWorklets for heavy media processing off the main thread
 
 ## Development
@@ -215,6 +226,10 @@ Most commands are npm scripts backed by `vite-plus` (`vp`).
 
 ```bash
 npm run dev                 # Dev server on port 5173
+npm run desktop:dev         # Electron + Renderer development
+npm run desktop:check       # Desktop type and lint checks
+npm run desktop:test        # Desktop and IPC tests
+npm run desktop:build       # Renderer + Main + Preload build
 npm run build               # Production build
 npm run preview             # Preview the production build
 npm run perf                # Build + serve a production-like perf target
@@ -245,8 +260,9 @@ VITE_SHOW_DEBUG_PANEL=true   # Show debug panel in dev
 
 ## Project Structure
 
-The `src/` tree is organized into a few layers:
+The product is split between `src/` and `desktop/`:
 
+- **`desktop/`** — Electron Main, Preload, IPC, Local Agent, Bridge, workspace, credentials, FFmpeg, ASR, updates, and diagnostics
 - **`features/`** — user-facing UI modules (editor, timeline, preview, media library, effects, keyframes, export, projects, settings, scene browser, and more)
 - **`runtime/`** — playback and rendering engines (composition runtime, player, clock) that are not user-facing UI
 - **`infrastructure/`** — platform adapters for GPU (effects, transitions, compositor, masks, text, scopes), analysis, audio, browser, storage, and thumbnails
@@ -260,6 +276,9 @@ layer.
 
 For the full directory breakdown, see the layer notes:
 
+- [Repository maintenance and delivery](docs/repository-maintenance.md)
+- [Agent platform execution plan](docs/agent-platform-execution.md)
+- [Agent platform handover](docs/agent-platform-handover.md)
 - [src/infrastructure/README.md](src/infrastructure/README.md)
 - [src/shared/README.md](src/shared/README.md)
 - Feature `deps/README.md` files inside individual feature folders

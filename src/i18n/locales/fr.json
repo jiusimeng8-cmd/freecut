@@ -87,21 +87,6 @@
       "uiSoundVoice": "Thème sonore",
       "uiSoundPreview": "Aperçu"
     },
-    "ai": {
-      "captionSampleInterval": "Intervalle d'échantillonnage des sous-titres",
-      "captionSampleIntervalDescription": "Fréquence à laquelle Analyser avec l'IA échantillonne une image pour le sous-titrage.",
-      "seconds": "Secondes",
-      "frames": "Images",
-      "unitSec": "s",
-      "unitFrames": "images",
-      "enterIntervalAboveZero": "Saisissez un intervalle supérieur à zéro.",
-      "captionEstimate": "~{{sceneCount}} {{scenes}} par clip d'1 min à {{fps}} ips",
-      "scene_one": "scène",
-      "scene_other": "scènes",
-      "captionIntervalHint": "{{estimate}}. Des intervalles plus petits produisent des scènes plus denses mais prennent plus de temps à générer.",
-      "defaultCaptionStyle": "Style de sous-titres par défaut",
-      "defaultCaptionStyleDescription": "Style appliqué aux sous-titres générés à partir de transcriptions ou du sous-titrage par IA."
-    },
     "timeline": {
       "snapByDefault": "Aimantation par défaut",
       "snapByDefaultDescription": "Définit l'état initial de l'aimantation à l'ouverture d'un projet.",
@@ -126,8 +111,6 @@
       "deleteProxies": "Supprimer les proxys",
       "deleteProxiesDescription": "Supprime les vidéos proxy générées pour ce projet",
       "deleted": "Supprimé",
-      "localAi": "IA locale",
-      "localAiDescription": "Décharge les runtimes résidents ou efface les modèles téléchargés en cache.",
       "clearCacheConfirmTitle": "Vider le cache du projet ?",
       "clearCacheConfirmDescription": "Cela supprimera les formes d'onde, vignettes vidéo, images GIF et audio décodé en cache du projet actuel ({{count}} éléments multimédias). Ils seront régénérés automatiquement si nécessaire. Vos données de projet, fichiers multimédias, vignettes et proxys ne seront pas affectés.",
       "clearCache": "Vider le cache"

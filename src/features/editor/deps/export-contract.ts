@@ -11,4 +11,26 @@ export const importExportsDialog = () => import('@/features/export/components/ex
 // editor root.
 export { RenderQueueRunner } from '@/features/export/components/render-queue-runner'
 export { RenderQueuePersistence } from '@/features/export/components/render-queue-persistence'
-export { useRenderQueueStore } from '@/features/export/stores/render-queue-store'
+export {
+  useRenderQueueStore,
+} from '@/features/export/stores/render-queue-store'
+export {
+  buildRenderJob,
+  buildSegmentJobs,
+  rangesFromFixedDuration,
+  rangesFromMarkers,
+} from '@/features/export/utils/build-render-job'
+export {
+  assessExportPreflight,
+} from '@/features/export/utils/export-preflight'
+export { convertTimelineToComposition } from '@/features/export/utils/timeline-to-composition'
+export { buildTranscriptSubtitleCues } from '@/features/export/utils/embedded-subtitle-export'
+export const importSingleFrameRenderer = () =>
+  import('@/features/export/utils/canvas-render-orchestrator')
+export {
+  deleteExportFile,
+  listExportFiles,
+  readExportFile,
+  saveExportFile,
+  workspaceFolderName,
+} from '@/infrastructure/storage'

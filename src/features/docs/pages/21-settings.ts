@@ -27,7 +27,7 @@ const page = {
             ['AI', 'Caption sample interval (seconds or frames); default caption style.'],
             [
               'Storage',
-              'Generate missing proxies; clear project cache; regenerate thumbnails; delete proxies; manage Local AI.',
+              'Generate missing proxies; clear project cache; regenerate thumbnails; and delete proxies.',
             ],
           ],
         },

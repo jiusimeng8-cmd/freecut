@@ -87,20 +87,38 @@
       "uiSoundVoice": "Sound theme",
       "uiSoundPreview": "Preview"
     },
-    "ai": {
-      "captionSampleInterval": "Caption sample interval",
-      "captionSampleIntervalDescription": "How often Analyze with AI samples a frame for captioning.",
-      "seconds": "Seconds",
-      "frames": "Frames",
-      "unitSec": "sec",
-      "unitFrames": "frames",
-      "enterIntervalAboveZero": "Enter an interval above zero.",
-      "captionEstimate": "~{{sceneCount}} {{scenes}} per 1-min clip at {{fps}}fps",
-      "scene_one": "scene",
-      "scene_other": "scenes",
-      "captionIntervalHint": "{{estimate}}. Smaller intervals produce denser scenes but take longer to generate.",
-      "defaultCaptionStyle": "Default caption style",
-      "defaultCaptionStyleDescription": "Style applied to captions generated from transcripts or AI captioning."
+    "desktop": {
+      "title": "FreeCut Desktop",
+      "version": "Version {{version}}",
+      "loading": "Loading version...",
+      "updateFailed": "FreeCut update failed",
+      "status": {
+        "disabled": "Updates are available in installed builds.",
+        "idle": "Ready to check for updates.",
+        "checking": "Checking for updates...",
+        "available": "Version {{version}} is available.",
+        "downloading": "Downloading update: {{percent}}%",
+        "downloaded": "Version {{version}} is ready to install.",
+        "upToDate": "FreeCut is up to date.",
+        "installing": "Restarting to install the update...",
+        "error": "Could not complete the update check."
+      },
+      "actions": {
+        "check": "Check for updates",
+        "checking": "Checking",
+        "download": "Download update",
+        "downloading": "Downloading",
+        "restartInstall": "Restart and install",
+        "installing": "Installing",
+        "later": "Later"
+      },
+      "diagnostics": {
+        "title": "Desktop diagnostics",
+        "export": "Export",
+        "exporting": "Exporting",
+        "exported": "Diagnostics exported",
+        "exportFailed": "Could not export diagnostics"
+      }
     },
     "timeline": {
       "snapByDefault": "Snap by Default",
@@ -126,8 +144,6 @@
       "deleteProxies": "Delete Proxies",
       "deleteProxiesDescription": "Remove generated proxy videos for this project",
       "deleted": "Deleted",
-      "localAi": "Local AI",
-      "localAiDescription": "Unload resident runtimes or clear cached model downloads.",
       "clearCacheConfirmTitle": "Clear project cache?",
       "clearCacheConfirmDescription": "This will delete cached waveforms, filmstrips, GIF frames, and decoded audio for the current project ({{count}} media items). These will be regenerated automatically when needed. Your project data, media files, thumbnails, and proxies will not be affected.",
       "clearCache": "Clear Cache"

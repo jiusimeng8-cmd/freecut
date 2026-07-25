@@ -1,4 +1,4 @@
-import { defineConfig, lazyPlugins } from 'vite-plus'
+import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus'
 import type { Plugin } from 'vite-plus'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { devWorkspacePlugin } from './scripts/dev-workspace-plugin'
+import { devCloudAsrPlugin } from './scripts/dev-cloud-asr-plugin'
 
 // Stamps public/sw.js with the hashed entry-chunk filename at build time so the service
 // worker's CACHE_VERSION — and the sw.js bytes — change on every deploy. Without this the
@@ -47,6 +48,7 @@ function serviceWorkerVersionPlugin(): Plugin {
 
 const oxlintConfig = JSON.parse(readFileSync(new URL('./.oxlintrc.json', import.meta.url), 'utf8'))
 const oxfmtConfig = JSON.parse(readFileSync(new URL('./.oxfmtrc.json', import.meta.url), 'utf8'))
+const localEnv = loadEnv('development', process.cwd(), '')
 const toolIgnorePatterns = [
   'dist/**',
   'coverage/**',
@@ -80,7 +82,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'desktop/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -99,7 +101,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     serviceWorkerVersionPlugin(),
-    devWorkspacePlugin(process.env.FREECUT_DEV_WORKSPACE),
+    devWorkspacePlugin(process.env.FREECUT_DEV_WORKSPACE ?? localEnv.FREECUT_DEV_WORKSPACE),
+    devCloudAsrPlugin(localEnv.VITE_FREECUT_CLOUD_BASE_URL),
   ]),
   resolve: {
     alias: {
@@ -313,7 +316,6 @@ export default defineConfig({
       '@mediabunny/ac3',
       '@mediabunny/mp3-encoder',
       '@mediabunny/aac-encoder',
-      '@huggingface/transformers',
     ],
     // Pre-bundle lucide-react for faster dev startup (avoids analyzing 1500+ icons on each reload)
     include: ['lucide-react'],

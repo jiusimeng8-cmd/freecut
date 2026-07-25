@@ -2,7 +2,7 @@
   "transcript": {
     "title": "字幕稿",
     "tabLabel": "字幕稿",
-    "emptySelection": "选择一个视频或音频片段以编辑其字幕稿。",
+    "emptySelection": "选择一个字幕块、视频或音频片段进行编辑。",
     "searchPlaceholder": "搜索字幕稿",
     "nextMatch": "下一个匹配",
     "previousMatch": "上一个匹配",

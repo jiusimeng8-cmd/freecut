@@ -13,6 +13,7 @@ import type { TimelineTrack, TimelineItem } from '@/types/timeline'
 import type { Transition } from '@/types/transition'
 import type { ItemKeyframes } from '@/types/keyframe'
 import type { AudioEqSettings } from '@/types/audio'
+import type { NestedCompositionInput } from '@/types/export'
 import type { ClientExportSettings, RenderProgress } from '../utils/client-renderer'
 import { abortJob } from '../utils/render-queue-control'
 
@@ -30,6 +31,7 @@ export interface RenderJobSnapshot {
   backgroundColor?: string
   busAudioEq?: AudioEqSettings
   masterBusDb?: number
+  compositions?: NestedCompositionInput[]
 }
 
 export interface RenderJob {
@@ -54,6 +56,8 @@ export interface RenderJob {
   /** Workspace-relative path once saved. */
   savedPath?: string
   fileSize?: number
+  sidecarSavedPath?: string
+  sidecarFileSize?: number
   error?: string
   createdAt: number
   startedAt?: number
@@ -84,7 +88,15 @@ interface RenderQueueActions {
   // Runner-internal mutators
   markRendering: (id: string) => void
   updateJobProgress: (id: string, progress: RenderProgress) => void
-  markCompleted: (id: string, info: { savedPath: string; fileSize: number }) => void
+  markCompleted: (
+    id: string,
+    info: {
+      savedPath: string
+      fileSize: number
+      sidecarSavedPath?: string
+      sidecarFileSize?: number
+    },
+  ) => void
   markFailed: (id: string, error: string) => void
   markCancelled: (id: string) => void
 }
@@ -150,6 +162,8 @@ export const useRenderQueueStore = create<RenderQueueState & RenderQueueActions>
               error: undefined,
               savedPath: undefined,
               fileSize: undefined,
+              sidecarSavedPath: undefined,
+              sidecarFileSize: undefined,
               startedAt: undefined,
               finishedAt: undefined,
             }
@@ -219,6 +233,8 @@ export const useRenderQueueStore = create<RenderQueueState & RenderQueueActions>
         progress: 100,
         savedPath: info.savedPath,
         fileSize: info.fileSize,
+        sidecarSavedPath: info.sidecarSavedPath,
+        sidecarFileSize: info.sidecarFileSize,
         finishedAt: Date.now(),
       })),
     })),

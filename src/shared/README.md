@@ -32,7 +32,7 @@ Other shared subpaths may use React when the primitive needs it
 - `state/clear-keyframes-dialog/*`, `state/project-media-match-dialog/*`,
   `state/tts-generate-dialog/*` — cross-feature workflow stores for
   dialogs opened by one feature and rendered by another
-- `state/local-inference/*`, `state/mixer-live-gain.ts`,
+- `state/mixer-live-gain.ts`,
   `state/transition-drag.ts` — misc shared state
 
 ## UI primitives

@@ -6,9 +6,8 @@ import { requestLazyCaptionThumbnail } from '../utils/lazy-thumb'
  * Module-scoped blob URL cache keyed by `thumbRelPath`. Scene Browser rows
  * are virtualized / remount frequently, so loading the same JPEG for every
  * mount would thrash the workspace-fs read path. Entries are evicted by
- * {@link invalidateMediaCaptionThumbBlobs} when the source media is
- * re-analyzed — without that, a blob URL keeps pointing at the pre-reanalyze
- * JPEG content even after the on-disk file changes.
+ * {@link invalidateMediaCaptionThumbBlobs} when captions are replaced so
+ * stale blob URLs do not survive on-disk changes.
  */
 const blobUrlCache = new Map<string, string>()
 const pendingLoads = new Map<string, Promise<string | null>>()

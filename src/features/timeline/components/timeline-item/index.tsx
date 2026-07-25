@@ -634,7 +634,6 @@ export const TimelineItem = memo(function TimelineItem({
     getCanJoinSelected,
     getCanLinkSelected,
     getCanUnlinkSelected,
-    hasSpeakableText,
     isSceneDetectionActive,
     isCompositionItem,
     handleJoinSelected,
@@ -649,8 +648,6 @@ export const TimelineItem = memo(function TimelineItem({
     handleClearPropertyKeyframes,
     handleBentoLayout,
     handleFreezeFrame,
-    handleGenerateAudioFromText,
-    handleCaptionsFromDialog,
     handleCreatePreComp,
     handleEnterComposition,
     handleDissolveComposition,
@@ -874,8 +871,6 @@ export const TimelineItem = memo(function TimelineItem({
             return frame > item.from && frame < item.from + item.durationInFrames
           })(),
           onFreezeFrame: handleFreezeFrame,
-          isTextItem: item.type === 'text' && hasSpeakableText,
-          onGenerateAudioFromText: handleGenerateAudioFromText,
           canRemoveSilence:
             (item.type === 'video' || item.type === 'audio') && !!item.mediaId && !isBroken,
           onRemoveSilence: handleRemoveSilence,
@@ -885,11 +880,6 @@ export const TimelineItem = memo(function TimelineItem({
           onRemoveFillers: handleRemoveFillers,
         }}
         captionActions={{
-          canManageCaptions: caption.canManageCaptions,
-          hasCaptions: hasGeneratedCaptions,
-          isGeneratingCaptions:
-            caption.transcriptStatus === 'queued' || caption.transcriptStatus === 'transcribing',
-          onOpenCaptionDialog: caption.openDialog,
           canExtractEmbeddedSubtitles: caption.canExtractEmbeddedSubtitles,
           onExtractEmbeddedSubtitles: caption.handleExtractEmbeddedSubtitles,
           canConsolidateCaptionsToSegment: caption.hasConsolidatablePerCueCaptions,
@@ -1271,10 +1261,6 @@ export const TimelineItem = memo(function TimelineItem({
         left={left}
         width={width}
         pointerHint={pointerHint}
-        itemMediaId={item.mediaId}
-        hasGeneratedCaptions={hasGeneratedCaptions}
-        caption={caption}
-        onGenerateCaption={handleCaptionsFromDialog}
       />
     </>
   )

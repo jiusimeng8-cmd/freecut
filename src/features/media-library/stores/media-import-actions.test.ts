@@ -161,7 +161,6 @@ function createMockState(overrides: ImportState = {}): MediaLibraryState & Media
     proxyStatus: new Map(),
     proxyProgress: new Map(),
     transcriptStatus: new Map(),
-    transcriptProgress: new Map(),
     showNotification: vi.fn(),
     ...overrides,
   } as MediaLibraryState & MediaLibraryActions
@@ -282,13 +281,13 @@ describe('createImportActions', () => {
       1,
       handles[0],
       'project-1',
-      { storageMode: 'copy' },
+      { storageMode: 'copy', file: firstFile },
     )
     expect(mediaLibraryServiceMocks.importMediaWithHandle).toHaveBeenNthCalledWith(
       2,
       handles[1],
       'project-1',
-      { storageMode: 'copy' },
+      { storageMode: 'copy', file: secondFile },
     )
   })
 
@@ -305,7 +304,7 @@ describe('createImportActions', () => {
     expect(mediaLibraryServiceMocks.importMediaWithHandle).toHaveBeenCalledWith(
       handle,
       'project-1',
-      { storageMode: 'link' },
+      { storageMode: 'link', file },
     )
   })
 

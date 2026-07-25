@@ -178,7 +178,6 @@ function resetStore(): void {
     proxyStatus: new Map(),
     proxyProgress: new Map(),
     transcriptStatus: new Map(),
-    transcriptProgress: new Map(),
   })
 }
 

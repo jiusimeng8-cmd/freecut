@@ -14,7 +14,7 @@ import type { AudioEqSettings } from '@/types/audio'
 import { DEFAULT_PROJECT_HEIGHT, DEFAULT_PROJECT_WIDTH } from '@/shared/projects/defaults'
 import { DEFAULT_FPS } from '@/shared/timeline/defaults'
 import { useMarkersStore } from '../markers-store'
-import { useCompositionsStore } from '../compositions-store'
+import { useCompositionsStore, type SubComposition } from '../compositions-store'
 import { useSequencesStore } from '../sequences-store'
 import { useCompositionNavigationStore, getActiveTabId } from '../composition-navigation-store'
 import { usePlaybackStore } from '@/shared/state/playback'
@@ -43,6 +43,8 @@ export interface ExportableSequence {
   inPoint: number | null
   outPoint: number | null
   markers: ProjectMarker[]
+  /** Effective nested-composition registry captured with this sequence. */
+  compositions: SubComposition[]
 }
 
 const MAIN_LABEL = 'Main Timeline'
@@ -76,6 +78,7 @@ export function listExportableSequences(): Array<{ id: string | null; name: stri
  */
 export function getExportableSequence(sequenceId: string | null): ExportableSequence {
   const current = getCurrentTimelineSnapshot()
+  const effectiveCompositions = getEffectiveCompositions(current)
   const nav = useCompositionNavigationStore.getState()
   const activeTabId = getActiveTabId(nav.breadcrumbs)
   const playback = usePlaybackStore.getState()
@@ -126,11 +129,12 @@ export function getExportableSequence(sequenceId: string | null): ExportableSequ
       busAudioEq,
       masterBusDb: playback.masterBusDb,
       durationFrames: furthestItemEnd(root.items),
+      compositions: effectiveCompositions,
       ...range(nav.mainHolder),
     }
   }
 
-  const comp = getEffectiveCompositions(current).find((c) => c.id === sequenceId)
+  const comp = effectiveCompositions.find((c) => c.id === sequenceId)
   if (!comp) {
     // Sequence vanished (e.g. deleted mid-dialog) — fall back to Main.
     return getExportableSequence(null)
@@ -151,6 +155,7 @@ export function getExportableSequence(sequenceId: string | null): ExportableSequ
     busAudioEq: isActiveTab ? playback.busAudioEq : comp.busAudioEq,
     masterBusDb: playback.masterBusDb,
     durationFrames: comp.durationInFrames || furthestItemEnd(comp.items),
+    compositions: effectiveCompositions,
     ...range(comp),
   }
 }

@@ -121,7 +121,7 @@ export function transcriptFromLegacy(record: MediaTranscript): AiOutput<'transcr
     schemaVersion: AI_OUTPUT_SCHEMA_VERSION,
     kind: 'transcript',
     mediaId: record.mediaId,
-    service: 'whisper',
+    service: record.model === 'fun-asr' ? 'dashscope-asr' : 'whisper',
     model: record.model,
     params: { quantization: record.quantization, language: record.language },
     createdAt: record.createdAt,

@@ -29,10 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // Log to console in development
-    if (import.meta.env.DEV) {
-      logger.error('ErrorBoundary caught:', error, errorInfo)
-    }
+    logger.error('ErrorBoundary caught:', error, errorInfo)
 
     this.props.onError?.(error, errorInfo)
   }

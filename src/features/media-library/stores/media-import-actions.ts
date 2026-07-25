@@ -352,6 +352,7 @@ export function createImportActions(
           markImportPreparationRunning(task.tempId)
           const metadata = await mediaLibraryService.importMediaWithHandle(task.handle, projectId, {
             storageMode,
+            file: task.file,
           })
           results[index] = {
             status: 'fulfilled',

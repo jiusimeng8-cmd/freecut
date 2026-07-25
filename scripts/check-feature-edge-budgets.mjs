@@ -15,7 +15,7 @@ const EDGE_BUDGETS = [
   { edge: 'preview -> timeline', maxImports: 2, maxFiles: 2 },
   { edge: 'preview -> player', maxImports: 2, maxFiles: 2 },
   // Raised for the on-device transcription + caption feature: the timeline
-  // transcript editor / auto-captions and the media-library Parakeet/Whisper
+  // transcript editor / auto-captions and the media-library transcript
   // pipeline now interoperate through more deps/ adapter contracts.
   { edge: 'timeline -> media-library', maxImports: 16, maxFiles: 7 },
   // Raised for the multi-timeline sequences + compositions feature: the media

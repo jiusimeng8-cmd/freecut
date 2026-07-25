@@ -17,13 +17,11 @@ import {
   clearFillerPreviewOverlays,
   FILLER_REMOVAL_PRESETS,
   SUGGESTED_EXTRA_FILLER_WORDS,
-  type FillerAudioConfidenceLevel,
   type FillerPreviewSummary,
   type FillerRange,
   type FillerRangesByMediaId,
   type FillerRemovalSettings,
 } from '../utils/filler-word-removal-preview'
-import { scoreFillerRangesWithClap } from '../utils/filler-audio-confidence'
 import { getItemSourceSpanSeconds, sourceSecondsToTimelineFrame } from '../utils/media-item-frames'
 import type { RemoveSilenceResult } from '../stores/actions/item-edit-actions'
 import { createLogger } from '@/shared/logging/logger'
@@ -44,19 +42,6 @@ function formatTimestamp(seconds: number): string {
   const minutes = Math.floor(seconds / 60)
   const remainder = seconds - minutes * 60
   return `${minutes}:${remainder.toFixed(1).padStart(4, '0')}`
-}
-
-function getConfidenceClass(level: FillerAudioConfidenceLevel): string {
-  switch (level) {
-    case 'high':
-      return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600'
-    case 'medium':
-      return 'border-amber-500/40 bg-amber-500/10 text-amber-600'
-    case 'low':
-      return 'border-destructive/40 bg-destructive/10 text-destructive'
-    default:
-      return 'border-muted-foreground/30 bg-muted/30 text-muted-foreground'
-  }
 }
 
 function normalizeEntry(value: string): string {
@@ -113,18 +98,6 @@ function createSelectedRangeIds(rangesByMediaId: FillerRangesByMediaId): Set<str
   for (const [mediaId, ranges] of Object.entries(rangesByMediaId)) {
     ranges.forEach((range, index) => {
       selectedIds.add(getRangeId(mediaId, range, index))
-    })
-  }
-  return selectedIds
-}
-
-function createHighConfidenceSelectedRangeIds(rangesByMediaId: FillerRangesByMediaId): Set<string> {
-  const selectedIds = new Set<string>()
-  for (const [mediaId, ranges] of Object.entries(rangesByMediaId)) {
-    ranges.forEach((range, index) => {
-      if (range.audioConfidence?.level === 'high') {
-        selectedIds.add(getRangeId(mediaId, range, index))
-      }
     })
   }
   return selectedIds
@@ -442,15 +415,6 @@ function FillerMatchList({
                     <span className="truncate font-medium">
                       {range.text || t('timeline.fillerRemoval.filler')}
                     </span>
-                    {range.audioConfidence && (
-                      <span
-                        className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] leading-none ${getConfidenceClass(
-                          range.audioConfidence.level,
-                        )}`}
-                      >
-                        {t(`timeline.fillerRemoval.confidence.${range.audioConfidence.level}`)}
-                      </span>
-                    )}
                   </span>
                   <span className="block truncate text-muted-foreground">
                     {media?.fileName ?? mediaId}
@@ -485,7 +449,6 @@ export function FillerRemovalDialog() {
     createSelectedRangeIds(rangesByMediaId),
   )
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [isScoringAudio, setIsScoringAudio] = useState(false)
   const [hasApplied, setHasApplied] = useState(false)
   const wasOpenRef = useRef(false)
   const isOpenRef = useRef(isOpen)
@@ -500,10 +463,6 @@ export function FillerRemovalDialog() {
   const selectedRangesByMediaId = useMemo(
     () => filterRangesBySelectedIds(reviewRangesByMediaId, selectedRangeIds),
     [reviewRangesByMediaId, selectedRangeIds],
-  )
-  const totalReviewedRangeCount = useMemo(
-    () => Object.values(reviewRangesByMediaId).reduce((sum, ranges) => sum + ranges.length, 0),
-    [reviewRangesByMediaId],
   )
   const selectedSummary = useMemo(
     () => summarizeRanges(selectedRangesByMediaId),
@@ -589,7 +548,6 @@ export function FillerRemovalDialog() {
     draftVersionRef.current += 1
     clearFillerPreviewOverlays(itemIds)
     setIsAnalyzing(false)
-    setIsScoringAudio(false)
     close()
   }, [close, itemIds])
 
@@ -667,42 +625,6 @@ export function FillerRemovalDialog() {
 
     void run()
   }, [draft, itemIds, t, updatePreview])
-
-  const handleScoreAudio = useCallback(() => {
-    const startedVersion = draftVersionRef.current
-    const isStale = () => !isOpenRef.current || draftVersionRef.current !== startedVersion
-    const run = async () => {
-      setIsScoringAudio(true)
-      try {
-        const scoredRangesByMediaId = await scoreFillerRangesWithClap(reviewRangesByMediaId)
-        if (isStale()) return
-        const nextSelectedRangeIds = createHighConfidenceSelectedRangeIds(scoredRangesByMediaId)
-        const selectedRanges = filterRangesBySelectedIds(
-          scoredRangesByMediaId,
-          nextSelectedRangeIds,
-        )
-        const nextSummary = applyFillerPreviewOverlays(itemIds, selectedRanges)
-        setReviewRangesByMediaId(scoredRangesByMediaId)
-        setSelectedRangeIds(nextSelectedRangeIds)
-        updatePreview({
-          settings: draft,
-          rangesByMediaId: selectedRanges,
-          summary: nextSummary,
-        })
-        toast.success(t('timeline.fillerRemoval.toastAudioScored'))
-      } catch (error) {
-        if (isStale()) return
-        logger.warn('Audio confidence scoring failed', error)
-        toast.error(
-          error instanceof Error ? error.message : t('timeline.fillerRemoval.toastScoreFailed'),
-        )
-      } finally {
-        if (!isStale()) setIsScoringAudio(false)
-      }
-    }
-
-    void run()
-  }, [draft, itemIds, reviewRangesByMediaId, t, updatePreview])
 
   const handleApply = useCallback(() => {
     let result: RemoveSilenceResult | null = null
@@ -902,28 +824,16 @@ export function FillerRemovalDialog() {
             variant="secondary"
             size="sm"
             onClick={handleUpdatePreview}
-            disabled={isAnalyzing || isScoringAudio}
+            disabled={isAnalyzing}
           >
             {isAnalyzing
               ? t('timeline.fillerRemoval.updating')
               : t('timeline.fillerRemoval.updatePreview')}
           </Button>
           <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleScoreAudio}
-            disabled={isAnalyzing || isScoringAudio || totalReviewedRangeCount === 0}
-          >
-            {isScoringAudio
-              ? t('timeline.fillerRemoval.scoring')
-              : t('timeline.fillerRemoval.scoreAudio')}
-          </Button>
-          <Button
             size="sm"
             onClick={handleApply}
-            disabled={
-              isAnalyzing || isScoringAudio || hasApplied || selectedSummary.rangeCount === 0
-            }
+            disabled={isAnalyzing || hasApplied || selectedSummary.rangeCount === 0}
           >
             {hasApplied ? t('timeline.fillerRemoval.removed') : t('timeline.fillerRemoval.remove')}
           </Button>

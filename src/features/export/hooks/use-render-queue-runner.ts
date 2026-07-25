@@ -50,11 +50,15 @@ async function renderQueuedJob(job: RenderJob): Promise<void> {
       { convertTimelineToComposition },
       { resolveMediaUrls },
       { saveExportFile },
+      { buildTranscriptSubtitleCues },
+      { serializeSrt },
     ] = await Promise.all([
       import('../utils/render-pipeline'),
       import('../utils/timeline-to-composition'),
       import('@/features/export/deps/media-library'),
       import('@/infrastructure/storage'),
+      import('../utils/embedded-subtitle-export'),
+      import('@/shared/utils/subtitles'),
     ])
 
     const { snapshot } = job
@@ -71,31 +75,60 @@ async function renderQueuedJob(job: RenderJob): Promise<void> {
       snapshot.backgroundColor,
       snapshot.busAudioEq,
       snapshot.masterBusDb,
+      snapshot.compositions,
     )
 
     // Resolve mediaIds → blob URLs fresh at render time (export never proxies).
     composition.tracks = await resolveMediaUrls(composition.tracks, { useProxy: false })
 
-    const { result, renderPath, fallbackReason } = await runRender({
+    const subtitleSidecar =
+      job.clientSettings.subtitleMode === 'sidecar'
+        ? (() => {
+            const cues = buildTranscriptSubtitleCues(composition)
+            if (cues.length === 0) return undefined
+            event.set('subtitleSidecarCues', cues.length)
+            return { filename: 'subtitles.srt', content: serializeSrt(cues) }
+          })()
+        : undefined
+
+    let { result, renderPath, fallbackReason } = await runRender({
       clientSettings: job.clientSettings,
       exportMode: job.exportMode,
       composition,
       signal: controller.signal,
       onProgress: (progress) => useRenderQueueStore.getState().updateJobProgress(job.id, progress),
     })
+    if (subtitleSidecar) result = { ...result, subtitleSidecar }
     temporaryResult = result
     if (fallbackReason) event.set('workerFallbackReason', fallbackReason)
 
     const saved = await saveExportFile(job.projectId, job.fileName, result.blob)
+    let sidecarSavedPath: string | undefined
+    let sidecarFileSize: number | undefined
+    if (result.subtitleSidecar) {
+      const baseName = job.fileName.replace(/\.[^.]+$/, '')
+      const sidecarExtension = result.subtitleSidecar.filename.split('.').pop() ?? 'srt'
+      const sidecarFileName = `${baseName}.${sidecarExtension}`
+      const sidecarBlob = new Blob([result.subtitleSidecar.content], {
+        type: 'application/x-subrip;charset=utf-8',
+      })
+      const sidecarSaved = await saveExportFile(job.projectId, sidecarFileName, sidecarBlob)
+      sidecarSavedPath = sidecarSaved.relPath
+      sidecarFileSize = sidecarBlob.size
+    }
     useRenderQueueStore.getState().markCompleted(job.id, {
       savedPath: saved.relPath,
       fileSize: result.fileSize,
+      sidecarSavedPath,
+      sidecarFileSize,
     })
 
     event.set('renderPath', renderPath)
     event.success({
       savedPath: saved.relPath,
       fileSize: result.fileSize,
+      sidecarSavedPath,
+      sidecarFileSize,
       duration: result.duration,
     })
   } catch (err) {

@@ -10,20 +10,22 @@ Experienced video editors. They come from Premiere Pro and DaVinci Resolve and
 expect those workflows: keyboard-driven, frame-accurate, dense panels they read
 at a glance. Their context is a focused editing session, often hours long, eyes
 on the preview and timeline, hands on shortcuts. They want professional power
-without an install, a subscription, or cloud uploads. The headline draw is that
-projects and media stay local on disk while editing, analysis, transcription,
-AI generation, and export all run in the browser.
+without giving a cloud service ownership of the project. Projects, source media,
+editing state, and exports stay local. The desktop Agent may send task-scoped
+messages, selected audio, frames, or proxies to configured model and ASR
+providers, while all timeline writes remain controlled by the local runtime.
 
 ## Product Purpose
 
-FreeCut is a browser-based, local-first, multi-track video editor. It exists to
-give serious editors a real NLE that runs entirely in the browser, with a
-workspace folder on their own disk as the source of truth (projects, media
-metadata, thumbnails, waveforms, transcripts, scene cuts, caches all as plain
-files). Success is an editor who would otherwise open Premiere choosing FreeCut
-for a real cut, and never noticing the browser, because playback is
-frame-accurate, scrubbing is responsive, and the tools they reach for by muscle
-memory are all there.
+FreeCut is a local-first, multi-track video editor with a Web Renderer and an
+Electron desktop host. The workspace folder on the user's disk is the source of
+truth for projects, media metadata, thumbnails, waveforms, transcripts, scene
+cuts, and caches. The desktop Agent behaves like an editing-focused Codex:
+it reads the project through MCP, asks configured cloud providers for reasoning
+or ASR when needed, and executes approved changes locally with verification.
+Success is an editor who would otherwise open Premiere choosing FreeCut for a
+real cut because playback is frame-accurate, scrubbing is responsive, and the
+Agent can operate the same tools without bypassing undo or project safety.
 
 ## Brand Personality
 

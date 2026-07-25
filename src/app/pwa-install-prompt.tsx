@@ -27,11 +27,12 @@ function isDismissed() {
 
 export function PwaInstallPrompt() {
   const { t } = useTranslation()
+  const isDesktop = window.freecutDesktop?.app.isDesktop === true
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    if (isStandaloneDisplayMode()) {
+    if (isDesktop || isStandaloneDisplayMode()) {
       return
     }
 
@@ -59,7 +60,7 @@ export function PwaInstallPrompt() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('appinstalled', handleAppInstalled)
     }
-  }, [])
+  }, [isDesktop])
 
   const dismiss = useCallback(() => {
     window.localStorage.setItem(
@@ -87,7 +88,7 @@ export function PwaInstallPrompt() {
     setInstallPrompt(null)
   }, [dismiss, installPrompt])
 
-  if (!visible || !installPrompt) {
+  if (isDesktop || !visible || !installPrompt) {
     return null
   }
 

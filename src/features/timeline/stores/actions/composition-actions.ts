@@ -1118,11 +1118,21 @@ export function openComposition(compositionId: string, label?: string, entryItem
 }
 
 /** Promote an existing composition (compound clip) to a standalone tab and open it. */
-export function openCompositionAsTab(compositionId: string): void {
-  if (!useCompositionsStore.getState().getComposition(compositionId)) return
-  useSequencesStore.getState().addTopLevelSequence(compositionId)
-  useTimelineSettingsStore.getState().markDirty()
+export function openCompositionAsTab(compositionId: string): boolean {
+  if (!useCompositionsStore.getState().getComposition(compositionId)) return false
+  const changed = !useSequencesStore.getState().isTopLevelSequence(compositionId)
+  if (changed) {
+    execute(
+      'OPEN_COMPOSITION_TAB',
+      () => {
+        useSequencesStore.getState().addTopLevelSequence(compositionId)
+        useTimelineSettingsStore.getState().markDirty()
+      },
+      { compositionId },
+    )
+  }
   useCompositionNavigationStore.getState().switchToSequence(compositionId)
+  return changed
 }
 
 /**
@@ -1131,11 +1141,19 @@ export function openCompositionAsTab(compositionId: string): void {
  * reference it); only the tab membership is removed. Switches to Main first if
  * the closed tab is currently active.
  */
-export function closeSequenceTab(compositionId: string): void {
+export function closeSequenceTab(compositionId: string): boolean {
+  if (!useSequencesStore.getState().isTopLevelSequence(compositionId)) return false
   const nav = useCompositionNavigationStore.getState()
   if (getActiveTabId(nav.breadcrumbs) === compositionId) {
     nav.switchToSequence(null)
   }
-  useSequencesStore.getState().removeTopLevelSequence(compositionId)
-  useTimelineSettingsStore.getState().markDirty()
+  execute(
+    'CLOSE_SEQUENCE_TAB',
+    () => {
+      useSequencesStore.getState().removeTopLevelSequence(compositionId)
+      useTimelineSettingsStore.getState().markDirty()
+    },
+    { compositionId },
+  )
+  return true
 }

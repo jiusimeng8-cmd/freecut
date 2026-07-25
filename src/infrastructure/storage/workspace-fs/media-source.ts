@@ -67,6 +67,27 @@ export async function readMediaSource(mediaId: string): Promise<Blob | null> {
   }
 }
 
+/**
+ * Resolve the workspace source file without reading its bytes.
+ * Desktop callers can turn this handle into a Range-capable media URL while
+ * browser callers keep using the normal File System Access path.
+ */
+export async function getMediaSourceHandle(mediaId: string): Promise<FileSystemFileHandle | null> {
+  const root = requireWorkspaceRoot()
+  try {
+    const segments = await findSourceSegments(root, mediaId)
+    if (!segments) return null
+    let directory = root
+    for (const segment of segments.slice(0, -1)) {
+      directory = await directory.getDirectoryHandle(segment, { create: false })
+    }
+    return directory.getFileHandle(segments.at(-1)!, { create: false })
+  } catch (error) {
+    logger.warn(`getMediaSourceHandle(${mediaId}) failed`, error)
+    return null
+  }
+}
+
 export async function hasMediaSource(mediaId: string): Promise<boolean> {
   const root = requireWorkspaceRoot()
   const segments = await findSourceSegments(root, mediaId)
