@@ -20,9 +20,7 @@ export function CloudAgentSettingsPopover() {
   const closeSettings = useCloudAiSettingsStore((state) => state.closeSettings)
 
   const bridgeBusinessKey = useCloudMcpConfigStore((state) => state.businessKey)
-  const bridgeBusinessKeyConfigured = useCloudMcpConfigStore(
-    (state) => state.businessKeyConfigured,
-  )
+  const bridgeBusinessKeyConfigured = useCloudMcpConfigStore((state) => state.businessKeyConfigured)
   const updateBridgeConfig = useCloudMcpConfigStore((state) => state.updateConfig)
   const clearBridgeConfig = useCloudMcpConfigStore((state) => state.clearConfig)
   const profileId = useCloudAgentConfigStore((state) => state.profileId)
@@ -119,24 +117,6 @@ export function CloudAgentSettingsPopover() {
             onChange={setBusinessKeyDraft}
             onToggle={() => setShowApiKey((current) => !current)}
           />
-          <div className="mt-2.5 space-y-1">
-            <span className="text-[11px] font-medium text-muted-foreground">工作模式</span>
-            <div className="grid grid-cols-2 gap-1">
-              {CLOUD_AGENT_PROFILE_OPTIONS.map((option) => (
-                <Button
-                  key={option.id}
-                  type="button"
-                  size="sm"
-                  variant={profileIdDraft === option.id ? 'default' : 'outline'}
-                  className="h-8"
-                  aria-pressed={profileIdDraft === option.id}
-                  onClick={() => setProfileIdDraft(option.id)}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {saveError && <p className="text-[10px] text-destructive">{saveError}</p>}
@@ -149,6 +129,11 @@ export function CloudAgentSettingsPopover() {
           <Check className="h-3.5 w-3.5" />
           保存配置
         </Button>
+
+        <div className="space-y-1.5">
+          <span className="text-[11px] font-medium text-muted-foreground">工作模式</span>
+          <ModeSegmentedControl value={profileIdDraft} onChange={setProfileIdDraft} />
+        </div>
         {bridgeBusinessKeyConfigured && (
           <Button
             size="sm"
@@ -163,6 +148,62 @@ export function CloudAgentSettingsPopover() {
         )}
       </PopoverContent>
     </Popover>
+  )
+}
+
+/**
+ * A sliding-thumb segmented control, in the v0 template's palette.
+ *
+ * The thumb is one absolutely-positioned element that translates between slots
+ * rather than a highlight redrawn on the active button, which is what lets the
+ * selection animate instead of jumping. Labels sit above it so the moving
+ * surface never covers the text mid-transition.
+ */
+function ModeSegmentedControl({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (value: string) => void
+}) {
+  const options = CLOUD_AGENT_PROFILE_OPTIONS
+  const activeIndex = Math.max(
+    0,
+    options.findIndex((option) => option.id === value),
+  )
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="工作模式"
+      className="relative flex rounded-full bg-[#212121] p-1"
+    >
+      <span
+        aria-hidden
+        className="absolute inset-y-1 rounded-full bg-gradient-to-b from-[#c7c7c7] to-[#acacac] shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none"
+        style={{
+          width: `calc((100% - 0.5rem) / ${options.length})`,
+          transform: `translateX(${activeIndex * 100}%)`,
+        }}
+      />
+      {options.map((option) => {
+        const selected = option.id === value
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(option.id)}
+            className={`relative z-10 flex-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-[#212121] ${
+              selected ? 'text-[#191919]' : 'text-[#cfcfcf] hover:text-white'
+            }`}
+          >
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
