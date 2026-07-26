@@ -7,16 +7,6 @@
     },
     {
       "path": "desktop/agent-runtime/index.ts",
-      "exportName": "LOCAL_DIRECTOR_MAX_ROUNDS",
-      "reason": "barrel-surface: Agent Runtime limits are public integration and verification constants."
-    },
-    {
-      "path": "desktop/agent-runtime/index.ts",
-      "exportName": "LOCAL_DIRECTOR_MAX_TOOL_CALLS_PER_ROUND",
-      "reason": "barrel-surface: Agent Runtime limits are public integration and verification constants."
-    },
-    {
-      "path": "desktop/agent-runtime/index.ts",
       "exportName": "AGENT_CLOUD_FORBIDDEN_CONTENT_FIELDS",
       "reason": "barrel-surface: Agent Runtime retention fields are public integration and verification constants."
     },
@@ -56,24 +46,29 @@
       "reason": "barrel-surface: Agent Runtime schema versions are public integration and verification constants."
     },
     {
+      "path": "desktop/agent-runtime/index.ts",
+      "exportName": "LOCAL_DIRECTOR_MAX_DISCOVERY_ROUNDS",
+      "reason": "barrel-surface: Agent Runtime limits are public integration and verification constants."
+    },
+    {
+      "path": "desktop/agent-runtime/index.ts",
+      "exportName": "LOCAL_DIRECTOR_MAX_ROUNDS",
+      "reason": "barrel-surface: Agent Runtime limits are public integration and verification constants."
+    },
+    {
+      "path": "desktop/agent-runtime/index.ts",
+      "exportName": "LOCAL_DIRECTOR_MAX_TOOL_CALLS_PER_ROUND",
+      "reason": "barrel-surface: Agent Runtime limits are public integration and verification constants."
+    },
+    {
       "path": "desktop/agent-runtime/local-director-loop.ts",
       "exportName": "LOCAL_DIRECTOR_MAX_TOOL_CALLS_PER_ROUND",
       "reason": "runtime-contract: Director limits are exported for Electron integration tests and verification."
     },
     {
-      "path": "src/features/editor/agent/tools/index.ts",
-      "exportName": "describeMcpTool",
-      "reason": "tool-contract: public MCP discovery surface reserved for Electron Bridge and external hosts."
-    },
-    {
-      "path": "src/features/editor/agent/tools/index.ts",
-      "exportName": "listMcpToolCategories",
-      "reason": "tool-contract: public MCP discovery surface reserved for Electron Bridge and external hosts."
-    },
-    {
-      "path": "src/features/editor/agent/tools/index.ts",
-      "exportName": "searchMcpTools",
-      "reason": "tool-contract: public MCP discovery surface reserved for Electron Bridge and external hosts."
+      "path": "desktop/workspace/index.ts",
+      "exportName": "findWhitespaceVariantPath",
+      "reason": "barrel-surface: workspace path resolution is a public integration and verification surface."
     },
     {
       "path": "src/components/ui/popover.tsx",
@@ -107,8 +102,18 @@
     },
     {
       "path": "src/features/editor/agent/tools/index.ts",
+      "exportName": "describeMcpTool",
+      "reason": "tool-contract: public MCP discovery surface reserved for Electron Bridge and external hosts."
+    },
+    {
+      "path": "src/features/editor/agent/tools/index.ts",
       "exportName": "listEditorTools",
       "reason": "tool-contract: public registry surface reserved for external Bridge and headless integrations."
+    },
+    {
+      "path": "src/features/editor/agent/tools/index.ts",
+      "exportName": "listMcpToolCategories",
+      "reason": "tool-contract: public MCP discovery surface reserved for Electron Bridge and external hosts."
     },
     {
       "path": "src/features/editor/agent/tools/index.ts",
@@ -129,6 +134,11 @@
       "path": "src/features/editor/agent/tools/index.ts",
       "exportName": "resolveTargetItems",
       "reason": "parked-ai-feature: the on-device assistant is deliberately unwired (see the note in ai-tab.tsx); restore when the Assistant tab ships."
+    },
+    {
+      "path": "src/features/editor/agent/tools/index.ts",
+      "exportName": "searchMcpTools",
+      "reason": "tool-contract: public MCP discovery surface reserved for Electron Bridge and external hosts."
     },
     {
       "path": "src/features/editor/components/mini-timeline/constants.ts",
