@@ -10,8 +10,15 @@ import type {
 } from './agent-thread-types'
 import { AGENT_RUNTIME_CONTRACT_ID } from './agent-thread-types'
 
-const DEFAULT_RECENT_TURN_LIMIT = 8
-const MAX_RECENT_TURN_LIMIT = 20
+/**
+ * A Director round writes two turns (the assistant's narration and the tool
+ * receipt), so this limit is consumed at twice the rate a conversation would
+ * suggest. At 8 it covered only four rounds of a twelve-round loop, and the
+ * originating user request was evicted partway through — leaving the model to
+ * infer the goal from its own narration. Sized to cover the whole loop instead.
+ */
+const DEFAULT_RECENT_TURN_LIMIT = 30
+const MAX_RECENT_TURN_LIMIT = 60
 const MAX_CONTEXT_TEXT_CHARS = 32_768
 
 function limitedText(value: string): string {
@@ -32,20 +39,29 @@ export function buildAgentContextPack(
     MAX_RECENT_TURN_LIMIT,
     Math.max(1, input.recentTurnLimit ?? DEFAULT_RECENT_TURN_LIMIT),
   )
-  const recentTurns = document.records
+  const threadTurns = document.records
     .filter(
       (record): record is AgentTurnRecord =>
         record.kind === 'turn' && record.threadId === input.threadId,
     )
     .sort((left, right) => left.sequence - right.sequence || left.createdAt - right.createdAt)
-    .slice(-recentTurnLimit)
-    .map((turn) => ({
-      id: turn.id,
-      role: turn.role,
-      body: limitedText(turn.body),
-      sequence: turn.sequence,
-      createdAt: turn.createdAt,
-    }))
+  const windowed = threadTurns.slice(-recentTurnLimit)
+  // A long tool-calling loop can push the request that started it out of the
+  // window, and the model then has nothing stating the goal — which is how a run
+  // ends up asking the user for something they already said. Keep the newest user
+  // turn regardless of position; it is the one turn the loop cannot work without.
+  const latestUserTurn = [...threadTurns].reverse().find((turn) => turn.role === 'user')
+  const anchored =
+    latestUserTurn && !windowed.includes(latestUserTurn)
+      ? [latestUserTurn, ...windowed.slice(1)]
+      : windowed
+  const recentTurns = anchored.map((turn) => ({
+    id: turn.id,
+    role: turn.role,
+    body: limitedText(turn.body),
+    sequence: turn.sequence,
+    createdAt: turn.createdAt,
+  }))
   const contextSummary = document.records
     .filter(
       (record): record is AgentContextSummaryRecord =>

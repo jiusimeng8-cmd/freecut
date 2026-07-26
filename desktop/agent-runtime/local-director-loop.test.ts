@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AgentRuntimeService } from './agent-runtime-service'
 import {
+  LOCAL_DIRECTOR_MAX_DISCOVERY_ROUNDS,
   LOCAL_DIRECTOR_MAX_ROUNDS,
   LocalDirectorLoop,
   type LocalDirectorLoopDependencies,
@@ -199,6 +200,9 @@ describe('LocalDirectorLoop', () => {
         name: 'freecut.color.apply_grade',
         arguments: { preset: 'cinematic' },
       },
+      // Carried so the caller can resume this run after the write lands
+      // instead of restarting it with a fresh round budget.
+      resume: { round: 1, discoveryRounds: 0, receipts: [] },
     })
     expect(execute).not.toHaveBeenCalled()
     await expect(runtime.listRecords({ threadId: 'thread-1', kinds: ['event', 'run'] })).resolves.toEqual(
@@ -442,6 +446,255 @@ describe('LocalDirectorLoop', () => {
             }),
           }),
         ]),
+      }),
+    )
+  })
+
+  it('records the arguments a read tool was called with', async () => {
+    const { runtime } = await createRuntime()
+    const contexts: Parameters<LocalDirectorLoopDependencies['runTurn']>[0][] = []
+    const loop = new LocalDirectorLoop(
+      createDependencies(runtime, {
+        tools: [
+          { name: 'tool_search', access: 'read', execute: async () => ({ count: 0 }) },
+        ],
+        runTurn: async (context) => {
+          contexts.push(context)
+          if (context.round === 1) {
+            return {
+              outcome: 'tool_calls',
+              toolCalls: [
+                {
+                  id: 'call-search-1',
+                  name: 'tool_search',
+                  arguments: { query: '时间轴' },
+                },
+              ],
+            }
+          }
+          return { outcome: 'final', assistantText: '完成。' }
+        },
+      }),
+    )
+
+    await loop.run({
+      runId: 'run-1',
+      holderId: 'director-1',
+      snapshotId: 'snapshot-1',
+      fingerprint: 'fingerprint-1',
+    })
+
+    // A receipt of a zero-hit search is only actionable if it says what was
+    // searched for; without this the model can only reword and retry blindly.
+    expect(contexts[1]?.toolReceipts[0]).toEqual(
+      expect.objectContaining({ arguments: { query: '时间轴' } }),
+    )
+    const turns = await runtime.listRecords({
+      threadId: 'thread-1',
+      kinds: ['turn'],
+      limit: Number.MAX_SAFE_INTEGER,
+    })
+    const toolTurn = turns.records.find(
+      (record) => record.kind === 'turn' && record.role === 'tool',
+    )
+    // The turn body is what actually reaches the model as context.
+    expect(toolTurn?.kind === 'turn' && toolTurn.body).toContain('时间轴')
+  })
+
+  it('refunds rounds that only searched the catalog so execution keeps a budget', async () => {
+    const { runtime } = await createRuntime()
+    let searchRounds = 0
+    const placed: string[] = []
+    const loop = new LocalDirectorLoop(
+      createDependencies(runtime, {
+        tools: [
+          { name: 'tool_search', access: 'read', execute: async () => ({ count: 0 }) },
+          {
+            name: 'read_project',
+            access: 'read',
+            execute: async () => {
+              placed.push('read_project')
+              return { ok: true }
+            },
+          },
+        ],
+        runTurn: async (context) => {
+          // Burn the entire base budget on discovery, the way the real run did.
+          if (searchRounds < LOCAL_DIRECTOR_MAX_ROUNDS) {
+            searchRounds += 1
+            return {
+              outcome: 'tool_calls',
+              toolCalls: [
+                { id: `call-search-${context.round}`, name: 'tool_search', arguments: {} },
+              ],
+            }
+          }
+          // Previously unreachable: the budget was already gone by now.
+          return {
+            outcome: 'tool_calls',
+            toolCalls: [{ id: `call-read-${context.round}`, name: 'read_project' }],
+          }
+        },
+      }),
+    )
+
+    await loop.run({
+      runId: 'run-1',
+      holderId: 'director-1',
+      snapshotId: 'snapshot-1',
+      fingerprint: 'fingerprint-1',
+    })
+
+    expect(placed).toContain('read_project')
+  })
+
+  it('still terminates when every round only searches', async () => {
+    const { runtime } = await createRuntime()
+    const runTurn = vi.fn(async (context) => ({
+      outcome: 'tool_calls' as const,
+      toolCalls: [{ id: `call-${context.round}`, name: 'tool_search', arguments: {} }],
+    }))
+    const loop = new LocalDirectorLoop(
+      createDependencies(runtime, {
+        tools: [{ name: 'tool_search', access: 'read', execute: async () => ({ count: 0 }) }],
+        runTurn,
+      }),
+    )
+
+    const result = await loop.run({
+      runId: 'run-1',
+      holderId: 'director-1',
+      snapshotId: 'snapshot-1',
+      fingerprint: 'fingerprint-1',
+    })
+
+    // The refund is capped, so a search-only run fails instead of looping forever.
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: 'failed',
+        errorCode: 'LOCAL_DIRECTOR_MAX_ROUNDS_EXCEEDED',
+      }),
+    )
+    expect(runTurn).toHaveBeenCalledTimes(
+      LOCAL_DIRECTOR_MAX_ROUNDS + LOCAL_DIRECTOR_MAX_DISCOVERY_ROUNDS,
+    )
+  })
+
+  it('does not refund a round that called a non-discovery tool', async () => {
+    const { runtime } = await createRuntime()
+    const runTurn = vi.fn(async (context) => ({
+      outcome: 'tool_calls' as const,
+      toolCalls: [
+        { id: `call-search-${context.round}`, name: 'tool_search', arguments: {} },
+        { id: `call-read-${context.round}`, name: 'read_project' },
+      ],
+    }))
+    const loop = new LocalDirectorLoop(
+      createDependencies(runtime, {
+        tools: [
+          { name: 'tool_search', access: 'read', execute: async () => ({ count: 0 }) },
+          { name: 'read_project', access: 'read', execute: async () => ({ ok: true }) },
+        ],
+        runTurn,
+      }),
+    )
+
+    await loop.run({
+      runId: 'run-1',
+      holderId: 'director-1',
+      snapshotId: 'snapshot-1',
+      fingerprint: 'fingerprint-1',
+    })
+
+    // A round that did real work is charged, so the budget stays bounded.
+    expect(runTurn).toHaveBeenCalledTimes(LOCAL_DIRECTOR_MAX_ROUNDS)
+  })
+
+  it('resumes after an approval with the receipts and rounds already spent', async () => {
+    const { runtime } = await createRuntime()
+    const rounds: number[] = []
+    const loop = new LocalDirectorLoop(
+      createDependencies(runtime, {
+        tools: [
+          { name: 'read_project', access: 'read', execute: async () => ({ ok: true }) },
+          { name: 'place_media', access: 'write' },
+        ],
+        runTurn: async (context) => {
+          rounds.push(context.round)
+          if (context.round === 1) {
+            return {
+              outcome: 'tool_calls',
+              toolCalls: [{ id: 'call-read-1', name: 'read_project' }],
+            }
+          }
+          if (context.round === 2) {
+            return {
+              outcome: 'tool_calls',
+              toolCalls: [{ id: 'call-place-1', name: 'place_media', arguments: {} }],
+            }
+          }
+          return { outcome: 'final', assistantText: '完成。' }
+        },
+      }),
+    )
+
+    const paused = await loop.run({
+      runId: 'run-1',
+      holderId: 'director-1',
+      snapshotId: 'snapshot-1',
+      fingerprint: 'fingerprint-1',
+    })
+    if (paused.status !== 'waiting_approval') throw new Error('Expected an approval pause.')
+    const resumed = await loop.run({
+      runId: 'run-1',
+      holderId: 'director-1',
+      snapshotId: 'snapshot-1',
+      fingerprint: 'fingerprint-1',
+      resume: {
+        ...paused.resume,
+        receipts: [
+          ...paused.resume.receipts,
+          { callId: 'call-place-1', toolName: 'place_media', status: 'succeeded' },
+        ],
+      },
+    })
+
+    expect(resumed).toEqual(
+      expect.objectContaining({ status: 'completed', assistantText: '完成。' }),
+    )
+    // Resuming continues the count instead of replaying round 1, so a task that
+    // needs several approvals still lives inside one round budget.
+    expect(rounds).toEqual([1, 2, 3])
+  })
+
+  it('charges resumed rounds against the same budget', async () => {
+    const { runtime } = await createRuntime()
+    const runTurn = vi.fn(async (context) => ({
+      outcome: 'tool_calls' as const,
+      toolCalls: [{ id: `call-${context.round}`, name: 'read_project' }],
+    }))
+    const loop = new LocalDirectorLoop(
+      createDependencies(runtime, {
+        tools: [{ name: 'read_project', access: 'read', execute: async () => ({ ok: true }) }],
+        runTurn,
+      }),
+    )
+
+    const result = await loop.run({
+      runId: 'run-1',
+      holderId: 'director-1',
+      snapshotId: 'snapshot-1',
+      fingerprint: 'fingerprint-1',
+      // Pretend eleven rounds were already spent before the approval.
+      resume: { round: LOCAL_DIRECTOR_MAX_ROUNDS - 1, discoveryRounds: 0, receipts: [] },
+    })
+
+    // One round left, then the budget is out — an approval must not reset it.
+    expect(runTurn).toHaveBeenCalledTimes(1)
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: 'failed',
+        errorCode: 'LOCAL_DIRECTOR_MAX_ROUNDS_EXCEEDED',
       }),
     )
   })
