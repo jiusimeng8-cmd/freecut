@@ -1,1 +1,4 @@
-export { mediaTranscriptionService } from '@/features/media-library/services/media-transcription-service'
+export {
+  mediaTranscriptionService,
+  NoSpeechDetectedError,
+} from '@/features/media-library/services/media-transcription-service'

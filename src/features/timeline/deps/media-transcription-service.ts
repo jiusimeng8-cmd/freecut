@@ -1,1 +1,4 @@
-export { mediaTranscriptionService } from './media-transcription-service-contract'
+export {
+  mediaTranscriptionService,
+  NoSpeechDetectedError,
+} from './media-transcription-service-contract'

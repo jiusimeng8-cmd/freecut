@@ -8,6 +8,13 @@ const mocks = vi.hoisted(() => ({
   insertTranscriptAsCaptions: vi.fn(),
   setTranscriptStatus: vi.fn(),
   resolveTargetItems: vi.fn(),
+  // The real class, not a stub: the tool discriminates with `instanceof`.
+  NoSpeechDetectedError: class NoSpeechDetectedError extends Error {
+    constructor(fileName?: string) {
+      super(`"${fileName}" 中没有检测到人声，已跳过字幕生成。`)
+      this.name = 'NoSpeechDetectedError'
+    }
+  },
 }))
 
 vi.mock('@/features/editor/deps/timeline-store', () => ({
@@ -22,6 +29,7 @@ vi.mock('@/features/editor/deps/media-library', () => ({
     transcribeMedia: mocks.transcribeMedia,
     insertTranscriptAsCaptions: mocks.insertTranscriptAsCaptions,
   },
+  NoSpeechDetectedError: mocks.NoSpeechDetectedError,
   useMediaLibraryStore: {
     getState: () => ({ setTranscriptStatus: mocks.setTranscriptStatus }),
   },
@@ -86,6 +94,34 @@ describe('generateTimelineCaptions', () => {
       mediaCount: 2,
       insertedCaptionCount: 2,
       failed: [],
+      skipped: [],
     })
+  })
+
+  it('skips media with no speech instead of failing the batch', async () => {
+    mocks.items = [
+      mediaItem('audio-1', 'silent-media', 'audio'),
+      mediaItem('audio-2', 'speaking-media', 'audio'),
+    ]
+    mocks.getTranscript.mockResolvedValue(undefined)
+    mocks.transcribeMedia.mockImplementation(async (mediaId: string) => {
+      if (mediaId === 'silent-media') throw new mocks.NoSpeechDetectedError('quiet.mp4')
+      return { mediaId }
+    })
+
+    const result = await generateTimelineCaptions({})
+
+    // The speaking clip still gets captions, and the silent one is not a failure.
+    expect(result.insertedCaptionCount).toBe(1)
+    expect(result.failed).toEqual([])
+    expect(result.skipped).toEqual([
+      { mediaId: 'silent-media', message: expect.stringContaining('quiet.mp4') },
+    ])
+    expect(mocks.setTranscriptStatus).toHaveBeenCalledWith('silent-media', 'idle')
+    expect(mocks.insertTranscriptAsCaptions).toHaveBeenCalledTimes(1)
+    expect(mocks.insertTranscriptAsCaptions).toHaveBeenCalledWith(
+      'speaking-media',
+      expect.objectContaining({ clipIds: ['audio-2'] }),
+    )
   })
 })

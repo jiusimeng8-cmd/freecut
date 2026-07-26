@@ -1,6 +1,7 @@
 import { useTimelineStore } from '@/features/editor/deps/timeline-store'
 import {
   mediaTranscriptionService,
+  NoSpeechDetectedError,
   useMediaLibraryStore,
 } from '@/features/editor/deps/media-library'
 import type { AudioItem, TimelineItem, VideoItem } from '@/types/timeline'
@@ -12,6 +13,8 @@ export interface GenerateTimelineCaptionsResult {
   mediaCount: number
   insertedCaptionCount: number
   failed: Array<{ mediaId: string; message: string }>
+  /** Media with no speech in it — skipped on purpose, not a failure. */
+  skipped: Array<{ mediaId: string; message: string }>
 }
 
 function isCaptionable(item: TimelineItem): item is CaptionableItem {
@@ -49,6 +52,7 @@ export async function generateTimelineCaptions(options: {
 
   let insertedCaptionCount = 0
   const failed: Array<{ mediaId: string; message: string }> = []
+  const skipped: Array<{ mediaId: string; message: string }> = []
   for (const [mediaId, items] of targets) {
     try {
       const existingTranscript = await mediaTranscriptionService.getTranscript(mediaId)
@@ -63,6 +67,12 @@ export async function generateTimelineCaptions(options: {
       })
       insertedCaptionCount += result.insertedItemCount
     } catch (error) {
+      // Media with no speech has nothing to caption, so the batch keeps going.
+      if (error instanceof NoSpeechDetectedError) {
+        useMediaLibraryStore.getState().setTranscriptStatus(mediaId, 'idle')
+        skipped.push({ mediaId, message: error.message })
+        continue
+      }
       useMediaLibraryStore.getState().setTranscriptStatus(mediaId, 'error')
       failed.push({
         mediaId,
@@ -75,5 +85,6 @@ export async function generateTimelineCaptions(options: {
     mediaCount: targets.size,
     insertedCaptionCount,
     failed,
+    skipped,
   }
 }

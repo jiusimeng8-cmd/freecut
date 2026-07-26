@@ -58,10 +58,7 @@ export const useCloudMcpConfigStore = create<CloudMcpConfigState>()(
           }
           const businessKeyConfigured =
             Boolean(businessKey) ||
-            await desktop.credentials.has(
-              DESKTOP_CREDENTIAL_KEYS.cloudBridgeBusinessKey,
-              baseUrl,
-            )
+            (await desktop.credentials.has(DESKTOP_CREDENTIAL_KEYS.cloudBridgeBusinessKey, baseUrl))
           desktopCredentialConfigurationRevision += 1
           set({ baseUrl, businessKey: '', businessKeyConfigured })
           return
@@ -146,9 +143,10 @@ export function getCloudMcpConfig(): CloudMcpConfig {
   return { baseUrl, businessKey }
 }
 
-export function isCloudMcpConfigured(config = getCloudMcpConfig()): boolean {
-  const hasBusinessKey = desktopApi()
-    ? useCloudMcpConfigStore.getState().businessKeyConfigured
-    : Boolean(config.businessKey.trim())
+export function isCloudMcpConfigured(
+  config = getCloudMcpConfig(),
+  businessKeyConfigured = useCloudMcpConfigStore.getState().businessKeyConfigured,
+): boolean {
+  const hasBusinessKey = desktopApi() ? businessKeyConfigured : Boolean(config.businessKey.trim())
   return Boolean(config.baseUrl.trim() && hasBusinessKey)
 }

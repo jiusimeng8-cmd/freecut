@@ -1,8 +1,10 @@
 import { z } from 'zod'
 import {
+  getLastImportBreakdown,
   getSharedProxyKey,
   importMediaLibraryService,
   mediaTranscriptionService,
+  NoSpeechDetectedError,
   proxyService,
   useMediaLibraryStore,
 } from '@/features/editor/deps/media-library'
@@ -25,7 +27,9 @@ async function ensureMediaProject(projectId?: string): Promise<string> {
     throw new Error(`Project not found: ${resolvedProjectId}`)
   }
   if (openProjectId && projectId && projectId !== openProjectId) {
-    throw new Error(`Project ${openProjectId} is open; cannot switch media context to ${projectId}.`)
+    throw new Error(
+      `Project ${openProjectId} is open; cannot switch media context to ${projectId}.`,
+    )
   }
   const store = useMediaLibraryStore.getState()
   if (store.currentProjectId !== resolvedProjectId) {
@@ -33,6 +37,12 @@ async function ensureMediaProject(projectId?: string): Promise<string> {
     await useMediaLibraryStore.getState().loadMediaItems()
   }
   return resolvedProjectId
+}
+
+/** Names the duplicates without letting a large folder flood the message. */
+function formatNames(names: readonly string[]): string {
+  if (names.length <= 3) return names.join(', ')
+  return `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`
 }
 
 function summarizeMedia(mediaId: string) {
@@ -87,7 +97,38 @@ const importMediaFiles = definePlatformTool({
   summarize: ({ path }) => `Import media files from ${path}`,
   execute: async ({ path, projectId, storageMode = 'copy', recursive = false }) => {
     const resolvedProjectId = await ensureMediaProject(projectId)
-    const imported = await importLocalMediaToLibrary(path, storageMode, recursive)
+    const { imported, candidateCount } = await importLocalMediaToLibrary(
+      path,
+      storageMode,
+      recursive,
+    )
+    // Files were found but none survived import. The store knows why — all
+    // duplicates reads very differently from all failed — so report the
+    // breakdown instead of listing every possible cause and making the user
+    // guess which one applies.
+    if (imported.length === 0) {
+      const breakdown = getLastImportBreakdown()
+      const allDuplicates =
+        breakdown !== null && breakdown.failed === 0 && breakdown.duplicates.length > 0
+      const message = allDuplicates
+        ? `All ${breakdown.duplicates.length} file${breakdown.duplicates.length === 1 ? ' is' : 's are'} already in this project's media library, so nothing was added. ` +
+          `The library is unchanged and already contains ${formatNames(breakdown.duplicates)}.`
+        : breakdown !== null && breakdown.failed > 0
+          ? `Found ${candidateCount} file${candidateCount === 1 ? '' : 's'} at ${path}, but ${breakdown.failed} failed to import` +
+            `${breakdown.duplicates.length > 0 ? ` and ${breakdown.duplicates.length} were already in the library` : ''}. ` +
+            'The failures are most likely an unsupported format or an unreadable file.'
+          : `Found ${candidateCount} file${candidateCount === 1 ? '' : 's'} at ${path}, but none could be imported. ` +
+            'They are most likely an unsupported format, unreadable, or already in the library.'
+      return {
+        ok: false,
+        message,
+        changed: false,
+        error: {
+          code: allDuplicates ? 'MEDIA_ALREADY_IMPORTED' : 'NO_MEDIA_IMPORTED',
+          message,
+        },
+      }
+    }
     return {
       ok: true,
       message: `Imported ${imported.length} media item${imported.length === 1 ? '' : 's'} into the project library.`,
@@ -97,7 +138,7 @@ const importMediaFiles = definePlatformTool({
         recursive,
         media: imported.map((media) => summarizeMedia(media.id)),
       },
-      changed: imported.length > 0,
+      changed: true,
     }
   },
 })
@@ -146,7 +187,8 @@ const deleteMedia = definePlatformTool({
 const scanMediaHealth = definePlatformTool({
   name: 'scan_media_health',
   title: 'Scan media health',
-  description: 'Check a project media library for missing source files and orphaned timeline clips.',
+  description:
+    'Check a project media library for missing source files and orphaned timeline clips.',
   inputSchema: objectSchema({ projectId: { type: 'string' } }),
   readOnly: true,
   schema: z.object({ projectId: z.string().min(1).optional() }),
@@ -171,7 +213,8 @@ const scanMediaHealth = definePlatformTool({
 const relinkMedia = definePlatformTool({
   name: 'relink_media',
   title: 'Relink media',
-  description: 'Replace the missing source file handle for one media item with an absolute local file.',
+  description:
+    'Replace the missing source file handle for one media item with an absolute local file.',
   inputSchema: objectSchema(
     {
       mediaId: { type: 'string' },
@@ -311,7 +354,8 @@ const manageMediaProxy = definePlatformTool({
 const transcribeMedia = definePlatformTool({
   name: 'transcribe_media',
   title: 'Transcribe media',
-  description: 'Run configured cloud ASR on media-library items without requiring timeline placement.',
+  description:
+    'Run configured cloud ASR on media-library items without requiring timeline placement.',
   inputSchema: objectSchema(
     {
       mediaIds: { type: 'array', items: { type: 'string' }, minItems: 1 },
@@ -327,20 +371,31 @@ const transcribeMedia = definePlatformTool({
   execute: async ({ mediaIds, projectId }) => {
     const resolvedProjectId = await ensureMediaProject(projectId)
     const results = []
+    const skipped: Array<{ mediaId: string; message: string }> = []
     for (const mediaId of mediaIds) {
-      const transcript = await mediaTranscriptionService.transcribeMedia(mediaId)
-      useMediaLibraryStore.getState().setTranscriptStatus(mediaId, 'ready')
-      results.push({
-        mediaId,
-        text: transcript.text,
-        segmentCount: transcript.segments.length,
-        updatedAt: transcript.updatedAt,
-      })
+      try {
+        const transcript = await mediaTranscriptionService.transcribeMedia(mediaId)
+        useMediaLibraryStore.getState().setTranscriptStatus(mediaId, 'ready')
+        results.push({
+          mediaId,
+          text: transcript.text,
+          segmentCount: transcript.segments.length,
+          updatedAt: transcript.updatedAt,
+        })
+      } catch (error) {
+        // Media with no speech has nothing to transcribe, so the batch keeps going.
+        if (!(error instanceof NoSpeechDetectedError)) throw error
+        useMediaLibraryStore.getState().setTranscriptStatus(mediaId, 'idle')
+        skipped.push({ mediaId, message: error.message })
+      }
     }
+    const skipNote = skipped.length
+      ? ` Skipped ${skipped.length} item${skipped.length === 1 ? '' : 's'} with no detected speech.`
+      : ''
     return {
       ok: true,
-      message: `Transcribed ${results.length} media item${results.length === 1 ? '' : 's'}.`,
-      data: { projectId: resolvedProjectId, transcripts: results },
+      message: `Transcribed ${results.length} media item${results.length === 1 ? '' : 's'}.${skipNote}`,
+      data: { projectId: resolvedProjectId, transcripts: results, skipped },
       operationId: crypto.randomUUID(),
       changed: results.length > 0,
     }

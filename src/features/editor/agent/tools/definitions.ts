@@ -21,9 +21,7 @@ import {
   sourceToTimelineFrames,
   timelineToSourceFrames,
 } from '@/features/editor/deps/timeline-utils'
-import {
-  useFillerRemovalDialogStore,
-} from '@/features/editor/deps/timeline-ui'
+import { useFillerRemovalDialogStore } from '@/features/editor/deps/timeline-ui'
 import {
   analyzeSilenceForItems,
   normalizeSilenceRemovalSettings,
@@ -331,8 +329,11 @@ const generateCaptions = defineTool({
       : 'Generate synchronized captions for all timeline media',
   execute: async (args) => {
     const result = await generateTimelineCaptions(args)
-    const successCount = result.mediaCount - result.failed.length
-    const summary = `Generated captions for ${successCount}/${result.mediaCount} media source${result.mediaCount === 1 ? '' : 's'} as ${result.insertedCaptionCount} subtitle track item${result.insertedCaptionCount === 1 ? '' : 's'}.`
+    const successCount = result.mediaCount - result.failed.length - result.skipped.length
+    const skipNote = result.skipped.length
+      ? ` Skipped ${result.skipped.length} media source${result.skipped.length === 1 ? '' : 's'} with no detected speech.`
+      : ''
+    const summary = `Generated captions for ${successCount}/${result.mediaCount} media source${result.mediaCount === 1 ? '' : 's'} as ${result.insertedCaptionCount} subtitle track item${result.insertedCaptionCount === 1 ? '' : 's'}.${skipNote}`
     if (result.failed.length === 0) {
       return {
         ok: true,
