@@ -223,6 +223,11 @@ export interface DesktopLocalAgentRunInput {
   snapshotId: string
   fingerprint: string
   userMessage: string
+  /**
+   * The current timeline rendered as text — clip refs, durations, playhead.
+   * Only the Renderer can build it, and the model needs it to target clips.
+   */
+  timelineContext?: string
 }
 
 export interface DesktopLocalAgentRunResult {
@@ -234,12 +239,33 @@ export interface DesktopLocalAgentRunResult {
     id: string
     name: string
     arguments?: unknown
+    /**
+     * Absolute local path this write will access, when the call names one.
+     * Approving grants access to it, so the UI must show it to the user.
+     */
+    localPath?: string
   }
 }
 
 export interface DesktopLocalAgentRecordListInput {
   threadId: string
   kinds: Array<'turn'>
+}
+
+/**
+ * A progress event pushed while a run is in flight.
+ *
+ * Only what the sidebar needs to narrate progress: the payload of the durable
+ * event record is deliberately left behind, since it can carry whole tool
+ * outputs and the Renderer re-reads the thread when the run ends anyway.
+ */
+export interface DesktopLocalAgentEvent {
+  runId: string
+  threadId: string
+  eventType: string
+  /** Tool this event is about, when it is about one. */
+  toolName?: string
+  createdAt: number
 }
 
 export interface DesktopLocalAgentRecord {
@@ -417,6 +443,7 @@ export interface FreeCutDesktopApi {
     approve(runId: string): Promise<DesktopLocalAgentRunResult>
     cancel(runId: string): Promise<boolean>
     listRecords(input: DesktopLocalAgentRecordListInput): Promise<DesktopLocalAgentRecordListResult>
+    onEvent(listener: (event: DesktopLocalAgentEvent) => void): () => void
   }
   ffmpeg: {
     probe(handle: DesktopHandleDescriptor): Promise<unknown>

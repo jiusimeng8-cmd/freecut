@@ -21,6 +21,7 @@ const SUGGESTIONS = [
 function LocalRunCard() {
   const run = useAgentStore((state) => state.localRun)
   const phase = useAgentStore((state) => state.phase)
+  const activity = useAgentStore((state) => state.activity)
   const approve = useAgentStore((state) => state.approve)
   const cancel = useAgentStore((state) => state.cancel)
 
@@ -30,7 +31,12 @@ function LocalRunCard() {
     return (
       <div className="flex items-start gap-2 rounded-md border border-border bg-secondary/30 p-2.5">
         <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
-        <p className="text-xs text-foreground">本地 Agent 正在读取项目并协调工具。</p>
+        {/* A run can span a dozen rounds and take a minute. Without the live line
+            below, one unchanging spinner reads the same whether the Agent is
+            working or hung. */}
+        <p className="text-xs text-foreground">
+          {activity ?? '本地 Agent 正在读取项目并协调工具。'}
+        </p>
       </div>
     )
   }
@@ -41,6 +47,11 @@ function LocalRunCard() {
         <p className="text-xs text-foreground">已准备好需要修改时间线的操作，正在等待本地审批。</p>
         {run.approval && (
           <p className="mt-1 text-[11px] text-muted-foreground">{run.approval.name}</p>
+        )}
+        {run.approval?.localPath && (
+          <p className="mt-1 break-all text-[11px] text-amber-600 dark:text-amber-500">
+            确认后将允许访问：{run.approval.localPath}
+          </p>
         )}
         <div className="mt-2 flex items-center gap-1.5">
           <Button size="sm" className="h-7 flex-1 gap-1.5" onClick={() => void approve()}>
@@ -65,7 +76,7 @@ function LocalRunCard() {
     return (
       <div className="flex items-center gap-2 rounded-md border border-border bg-secondary/30 p-2.5 text-xs text-foreground">
         <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-        正在提交本地审批并执行工具。
+        {activity ?? '正在提交本地审批并执行工具。'}
       </div>
     )
   }
@@ -85,11 +96,15 @@ export const AgentChatPanel = memo(function AgentChatPanel() {
   const projectId = useProjectStore((state) => state.currentProject?.id ?? null)
   const baseUrl = useCloudMcpConfigStore((state) => state.baseUrl)
   const businessKey = useCloudMcpConfigStore((state) => state.businessKey)
+  // Desktop clears the plaintext key from renderer state once it is stored in
+  // safeStorage, so this flag is what actually changes on a successful save.
+  // It must be subscribed here or the panel keeps showing the setup prompt.
+  const businessKeyConfigured = useCloudMcpConfigStore((state) => state.businessKeyConfigured)
 
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const busy = phase !== 'idle'
-  const configured = isCloudMcpConfigured({ baseUrl, businessKey })
+  const configured = isCloudMcpConfigured({ baseUrl, businessKey }, businessKeyConfigured)
 
   useEffect(() => {
     if (projectId) void loadProjectConversation(projectId)

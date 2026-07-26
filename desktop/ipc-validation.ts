@@ -267,6 +267,10 @@ const localAgentRunInputSchema = z
     snapshotId: idSchema,
     fingerprint: z.string().trim().min(1).max(512),
     userMessage: z.string().trim().min(1).max(20_000),
+    // The Renderer's view of the timeline. Optional so a caller that cannot
+    // build it still runs — the model is told the timeline is unavailable
+    // rather than being handed a silent blank.
+    timelineContext: z.string().max(8_000).optional(),
   })
   .strict()
 
@@ -361,7 +365,7 @@ const agentContextPackInputSchema = z
     runId: idSchema.optional(),
     snapshotId: idSchema,
     fingerprint: z.string().min(1).max(512),
-    recentTurnLimit: z.number().int().min(1).max(20).optional(),
+    recentTurnLimit: z.number().int().min(1).max(60).optional(),
   })
   .strict()
 

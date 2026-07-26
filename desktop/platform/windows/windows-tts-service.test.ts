@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('../../services/process-runner', () => ({
   runProcess: vi.fn(),
+  resolveSystemExecutable: (relativePath: string) => relativePath,
 }))
 
 import { runProcess } from '../../services/process-runner'

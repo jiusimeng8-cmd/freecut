@@ -3,6 +3,7 @@ import type {
   DesktopBridgeCallResponse,
   DesktopBridgeCall,
   DesktopHandleDescriptor,
+  DesktopLocalAgentEvent,
   DesktopUpdateStatus,
   FreeCutDesktopApi,
 } from './desktop-types'
@@ -96,6 +97,12 @@ const api: FreeCutDesktopApi = {
     approve: (runId) => invoke(DESKTOP_IPC.localAgentApprove, runId),
     cancel: (runId) => invoke(DESKTOP_IPC.localAgentCancel, runId),
     listRecords: (input) => invoke(DESKTOP_IPC.localAgentListRecords, input),
+    onEvent: (listener) => {
+      const handler = (_event: Electron.IpcRendererEvent, value: DesktopLocalAgentEvent) =>
+        listener(value)
+      ipcRenderer.on(DESKTOP_IPC.localAgentEvent, handler)
+      return () => ipcRenderer.removeListener(DESKTOP_IPC.localAgentEvent, handler)
+    },
   },
   ffmpeg: {
     probe: (handle) => invoke(DESKTOP_IPC.ffmpegProbe, handle),

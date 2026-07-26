@@ -28,18 +28,29 @@ interface PlaceImportedMediaEntryResult {
   nextCursor: number
 }
 
+export interface ImportLocalMediaToLibraryResult {
+  imported: MediaMetadata[]
+  /** Files found at the path, before extension/codec filtering. */
+  candidateCount: number
+}
+
 export async function importLocalMediaToLibrary(
   path: string,
   storageMode: 'copy' | 'link' = 'copy',
   recursive = false,
-): Promise<MediaMetadata[]> {
+): Promise<ImportLocalMediaToLibraryResult> {
   const handles = recursive
     ? await getDevLocalMediaHandles(path, { recursive: true })
     : await getDevLocalMediaHandles(path)
   if (handles.length === 0) {
-    throw new Error('The local path contains no files.')
+    throw new Error(
+      recursive
+        ? 'The local path contains no files.'
+        : 'The local path contains no files at its top level. Retry with recursive: true if the media sits in subfolders.',
+    )
   }
-  return useMediaLibraryStore.getState().importHandles(handles, { storageMode })
+  const imported = await useMediaLibraryStore.getState().importHandles(handles, { storageMode })
+  return { imported, candidateCount: handles.length }
 }
 
 function resolveEntryTargets(params: {

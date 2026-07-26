@@ -21,6 +21,7 @@ import {
   type AgentCompleteRunInput,
   type AgentContextPack,
   type AgentContextPackInput,
+  type AgentEventRecord,
   type AgentLeaseAcquireInput,
   type AgentLeaseAcquireResult,
   type AgentLeaseAssertInput,
@@ -32,6 +33,7 @@ import {
   type AgentRecordListResult,
   type AgentRunRecord,
   type AgentRuntimeInfo,
+  type AgentRuntimeRecord,
   type AgentSandboxStatus,
   type AgentSandboxWriteInput,
   type AgentStartRunInput,
@@ -59,6 +61,15 @@ export class AgentRuntimeService {
   private acceptingWrites = true
   private readonly now: () => number
   private readonly log: (message: string) => void
+  /**
+   * Notified after every event record is durably stored.
+   *
+   * The Renderer used to see nothing between "sent" and the final answer, and a
+   * multi-round run can take a minute — long enough to read as a hang. Emitting
+   * after the write, not before, means a subscriber can never observe an event
+   * that a crash would have rolled back.
+   */
+  private readonly eventListeners = new Set<(event: AgentEventRecord) => void>()
 
   constructor(
     readonly dataRoot: string,
@@ -143,6 +154,31 @@ export class AgentRuntimeService {
     return this.store.listRecords(input)
   }
 
+  /**
+   * Subscribes to event records as they are stored. Returns an unsubscribe.
+   */
+  onEvent(listener: (event: AgentEventRecord) => void): () => void {
+    this.eventListeners.add(listener)
+    return () => {
+      this.eventListeners.delete(listener)
+    }
+  }
+
+  private emitEvents(records: AgentRuntimeRecord[]): void {
+    if (this.eventListeners.size === 0) return
+    for (const record of records) {
+      if (record.kind !== 'event') continue
+      for (const listener of this.eventListeners) {
+        // One bad subscriber must not fail the write that already succeeded.
+        try {
+          listener(record)
+        } catch (error) {
+          this.log(`event listener failed: ${String(error)}`)
+        }
+      }
+    }
+  }
+
   async putRecords(input: AgentPutRecordsInput): Promise<AgentPutRecordsResult> {
     this.assertAcceptingWrites()
     const result = await this.store.putRecords(input)
@@ -155,6 +191,7 @@ export class AgentRuntimeService {
         .map((run) => this.sandbox.cleanup(run.id)),
     )
     this.log(`records stored revision=${result.revision} count=${result.stored.length}`)
+    this.emitEvents(input.records)
     return result
   }
 
@@ -270,6 +307,10 @@ export class AgentRuntimeService {
     this.log(
       `run completed runId=${input.runId} status=${input.status} fence=${input.fence}`,
     )
+    // completeRun writes through the store directly (it needs the fence), so it
+    // has to emit for itself — the terminal `directorFinal`/`directorFailed`
+    // events ride along here and are exactly the ones the UI waits for.
+    this.emitEvents(input.additionalRecords ?? [])
     return completed
   }
 

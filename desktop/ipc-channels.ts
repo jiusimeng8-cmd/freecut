@@ -36,6 +36,7 @@ export const DESKTOP_IPC = {
   localAgentRun: 'freecut:local-agent:run',
   localAgentApprove: 'freecut:local-agent:approve',
   localAgentCancel: 'freecut:local-agent:cancel',
+  localAgentEvent: 'freecut:local-agent:event',
   localAgentListRecords: 'freecut:local-agent:list-records',
   ffmpegProbe: 'freecut:ffmpeg:probe',
   asrTranscribe: 'freecut:asr:transcribe',

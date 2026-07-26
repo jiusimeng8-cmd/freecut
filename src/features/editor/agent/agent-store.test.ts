@@ -1,16 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+type LocalAgentEventListener = (event: {
+  runId: string
+  threadId: string
+  eventType: string
+  toolName?: string
+  createdAt: number
+}) => void
+
 const mocks = vi.hoisted(() => ({
   assertLocalAgentConfigured: vi.fn(),
   approveLocalAgentRun: vi.fn(),
   cancelLocalAgentRun: vi.fn(),
   readLocalAgentMessages: vi.fn(),
   runLocalAgent: vi.fn(),
+  subscribeToLocalAgentEvents: vi.fn(),
 }))
 
 vi.mock('./agent-service', () => mocks)
 
 import { useAgentStore } from './agent-store'
+
+/** Event listeners the store has subscribed and not yet torn down. */
+let listeners: LocalAgentEventListener[] = []
 
 beforeEach(() => {
   mocks.assertLocalAgentConfigured.mockReset()
@@ -18,6 +30,14 @@ beforeEach(() => {
   mocks.cancelLocalAgentRun.mockReset()
   mocks.readLocalAgentMessages.mockReset()
   mocks.runLocalAgent.mockReset()
+  mocks.subscribeToLocalAgentEvents.mockReset()
+  listeners = []
+  mocks.subscribeToLocalAgentEvents.mockImplementation((listener: LocalAgentEventListener) => {
+    listeners.push(listener)
+    return () => {
+      listeners = listeners.filter((entry) => entry !== listener)
+    }
+  })
   mocks.readLocalAgentMessages.mockResolvedValue([])
   mocks.runLocalAgent.mockResolvedValue({
     status: 'completed',
@@ -35,6 +55,7 @@ beforeEach(() => {
     messages: [],
     phase: 'idle',
     localRun: null,
+    activity: null,
   })
 })
 
@@ -162,5 +183,124 @@ describe('useAgentStore local Agent Host flow', () => {
 
     expect(useAgentStore.getState().messages).toEqual(messages)
     expect(localStorage.getItem('freecut:agent-history:project-a')).toBeNull()
+  })
+
+  it('narrates run progress from the event stream and stops listening when the run ends', async () => {
+    let resolveRun!: (result: { status: 'completed' }) => void
+    mocks.runLocalAgent.mockImplementation(
+      () =>
+        new Promise<{ status: 'completed' }>((resolve) => {
+          resolveRun = resolve
+        }),
+    )
+    useAgentStore.setState({ projectId: 'project-1' })
+
+    const submission = useAgentStore.getState().submit('读取时间线')
+    await vi.waitFor(() => expect(useAgentStore.getState().phase).toBe('running'))
+    const runId = useAgentStore.getState().localRun!.runId
+
+    listeners.forEach((listener) =>
+      listener({
+        runId,
+        threadId: 'project:project-1',
+        eventType: 'toolReceipt',
+        toolName: 'read_timeline',
+        createdAt: 1,
+      }),
+    )
+    expect(useAgentStore.getState().activity).toBe('已完成 read_timeline')
+
+    // A different run's events must not overwrite the line the user is watching.
+    listeners.forEach((listener) =>
+      listener({
+        runId: 'some-other-run',
+        threadId: 'project:project-1',
+        eventType: 'toolReceipt',
+        toolName: 'read_history',
+        createdAt: 2,
+      }),
+    )
+    expect(useAgentStore.getState().activity).toBe('已完成 read_timeline')
+
+    resolveRun({ status: 'completed' })
+    await submission
+
+    expect(useAgentStore.getState().activity).toBeNull()
+    expect(listeners).toHaveLength(0)
+  })
+
+  it('keeps the run cancellable across an approval so a resumed loop can still be stopped', async () => {
+    let resolveApproval!: (result: { status: 'completed'; runId: string }) => void
+    mocks.approveLocalAgentRun.mockImplementation(
+      () =>
+        new Promise<{ status: 'completed'; runId: string }>((resolve) => {
+          resolveApproval = resolve
+        }),
+    )
+    useAgentStore.setState({
+      projectId: 'project-1',
+      phase: 'waiting-approval',
+      localRun: {
+        runId: 'run-1',
+        status: 'waiting_approval',
+        approval: { id: 'call-1', name: 'freecut.timeline.split' },
+      },
+    })
+
+    const approval = useAgentStore.getState().approve()
+    await vi.waitFor(() => expect(useAgentStore.getState().phase).toBe('approving'))
+
+    listeners.forEach((listener) =>
+      listener({
+        runId: 'run-1',
+        threadId: 'project:project-1',
+        eventType: 'approvalGranted',
+        toolName: 'freecut.timeline.split',
+        createdAt: 1,
+      }),
+    )
+    expect(useAgentStore.getState().activity).toBe('正在执行 freecut.timeline.split…')
+
+    // Approval no longer ends the run — it resumes the loop — so 停止 has to reach
+    // the rounds that follow, and the late result must not revive the panel.
+    useAgentStore.getState().cancel()
+    expect(mocks.cancelLocalAgentRun).toHaveBeenCalledWith('run-1')
+    resolveApproval({ status: 'completed', runId: 'run-1' })
+    await approval
+
+    expect(useAgentStore.getState()).toMatchObject({
+      phase: 'idle',
+      activity: null,
+      localRun: { runId: 'run-1', status: 'cancelled' },
+    })
+    expect(listeners).toHaveLength(0)
+  })
+
+  it('returns to the approval card when a resumed run stops at the next write', async () => {
+    mocks.approveLocalAgentRun.mockResolvedValue({
+      status: 'waiting_approval',
+      runId: 'run-1',
+      approval: { id: 'call-2', name: 'freecut.timeline.delete' },
+    })
+    useAgentStore.setState({
+      projectId: 'project-1',
+      phase: 'waiting-approval',
+      localRun: {
+        runId: 'run-1',
+        status: 'waiting_approval',
+        approval: { id: 'call-1', name: 'freecut.timeline.split' },
+      },
+    })
+
+    await useAgentStore.getState().approve()
+
+    expect(useAgentStore.getState()).toMatchObject({
+      phase: 'waiting-approval',
+      localRun: {
+        runId: 'run-1',
+        status: 'waiting_approval',
+        approval: { name: 'freecut.timeline.delete' },
+      },
+    })
   })
 })

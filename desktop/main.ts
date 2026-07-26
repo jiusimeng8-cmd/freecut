@@ -13,6 +13,7 @@ import {
   type SaveDialogOptions,
 } from 'electron'
 import { autoUpdater } from 'electron-updater'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { appendFile, mkdir, open, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { release } from 'node:os'
@@ -27,6 +28,7 @@ import {
   DESKTOP_CREDENTIAL_KEYS,
   DESKTOP_CREDENTIAL_ORIGIN_KEYS,
   type DesktopHandleDescriptor,
+  type DesktopLocalAgentEvent,
   type DesktopLocalAgentRecordListResult,
   type DesktopLocalAgentRunResult,
   type DesktopUpdateStatus,
@@ -81,8 +83,14 @@ import {
   TranscriptionTaskService,
   UpdateNotificationService,
   type AgentTurnRequest,
+  extractToolCallPath,
 } from './services'
-import { DesktopHandleStore, FileSystemService, PathRegistry } from './workspace'
+import {
+  DesktopHandleStore,
+  FileSystemService,
+  PathRegistry,
+  resolveExistingPath,
+} from './workspace'
 
 const APP_SCHEME = 'freecut'
 const APP_HOST = 'app'
@@ -313,6 +321,22 @@ async function registerMediaProtocol(registry: PathRegistry): Promise<void> {
 function mediaFileUrl(handle: DesktopHandleDescriptor): string {
   const path = [handle.token, ...handle.path].map((part) => encodeURIComponent(part)).join('/')
   return `${MEDIA_SCHEME}://${MEDIA_HOST}/${path}`
+}
+
+const pathExists = (candidate: string): Promise<boolean> =>
+  stat(candidate).then(
+    () => true,
+    () => false,
+  )
+
+/**
+ * Resolves the path to actually use, tolerating a requested path that differs
+ * from the real one only by whitespace. Falls back to the request so the caller
+ * still reports an honest ENOENT when nothing matches.
+ */
+async function resolveLocalPath(path: string): Promise<string> {
+  const requested = resolve(path)
+  return (await resolveExistingPath(requested, pathExists)) ?? requested
 }
 
 function getDevelopmentUrl(): string | null {
@@ -899,6 +923,8 @@ function registerIpc(input: {
   tasks: TaskRepository
   agentRuntime: AgentRuntimeService
   localAgentHost: LocalAgentHostService
+  /** Registers and persists a user-approved local path. */
+  grantLocalPath: (path: string) => Promise<void>
   updateMode: DesktopUpdateMode
   checkNotificationUpdate: () => Promise<DesktopUpdateStatus>
   openNotificationUpdate: () => Promise<void>
@@ -1094,7 +1120,11 @@ function registerIpc(input: {
       if (typeof path !== 'string' || path.length > 32_768 || !isAbsolute(path)) {
         throw new Error('Local media path must be absolute.')
       }
-      const requestedPath = resolve(path)
+      // A caller transcribing a path by hand can drop a space or wrap the line,
+      // producing ENOENT on a folder that plainly exists. Correct that before
+      // authorizing, so the prompt and the grant both name the real folder.
+      const requestedPath = await resolveLocalPath(path)
+      // Still throws ENOENT when nothing matched, which is the honest outcome.
       await stat(requestedPath)
       if (!(await input.fileSystem.registry.isAuthorized(requestedPath))) {
         const confirmation = await dialog.showMessageBox(requireMainWindow(event), {
@@ -1102,7 +1132,7 @@ function registerIpc(input: {
           title: 'Allow local file access?',
           message: 'FreeCut wants to access this local path.',
           detail: requestedPath,
-          buttons: ['Cancel', 'Allow for this session'],
+          buttons: ['Cancel', 'Allow'],
           defaultId: 0,
           cancelId: 0,
           noLink: true,
@@ -1110,6 +1140,9 @@ function registerIpc(input: {
         if (confirmation.response !== 1) {
           throw new Error('Local path access was not approved.')
         }
+        // Remember the grant so the same folder is not queried again after a
+        // restart. Registration itself happens in registerLocalFiles below.
+        await input.grantLocalPath(requestedPath)
       }
       return input.fileSystem.registerLocalFiles(requestedPath, options?.recursive === true)
     },
@@ -1199,6 +1232,9 @@ function registerIpc(input: {
         holderId: LOCAL_AGENT_HOLDER_ID,
         leaseTtlMs: LOCAL_AGENT_LEASE_TTL_MS,
         userMessage: run.userMessage,
+        ...(run.timelineContext === undefined
+          ? {}
+          : { timelineContext: run.timelineContext }),
         signal: controller.signal,
       })
       if (result.status === 'completed') {
@@ -1209,10 +1245,19 @@ function registerIpc(input: {
         } satisfies DesktopLocalAgentRunResult
       }
       if (result.status === 'waiting_approval') {
+        // Approving this card also authorizes the path, so the Renderer must
+        // be able to show which one. Show the corrected path when the requested
+        // one only differs by whitespace, or the card would name a folder that
+        // does not exist while the grant covers a different one.
+        const requestedLocalPath = extractToolCallPath(result.approval.arguments)
+        const localPath = requestedLocalPath ? await resolveLocalPath(requestedLocalPath) : null
         return {
           status: result.status,
           runId: result.runId,
-          approval: result.approval,
+          approval: {
+            ...result.approval,
+            ...(localPath ? { localPath } : {}),
+          },
         } satisfies DesktopLocalAgentRunResult
       }
       if (result.status === 'lease_held') {
@@ -1232,17 +1277,41 @@ function registerIpc(input: {
     }
   })
   handle(DESKTOP_IPC.localAgentApprove, async (_event, runId: unknown) => {
-    const result = await input.localAgentHost.approve({
-      runId: parseId(runId, 'Local Agent runId'),
-      holderId: LOCAL_AGENT_HOLDER_ID,
-      leaseTtlMs: LOCAL_AGENT_LEASE_TTL_MS,
-    })
-    return {
-      status: result.status,
-      runId: result.run.id,
-      assistantText: result.assistantText,
-      errorCode: result.errorCode,
-    } satisfies DesktopLocalAgentRunResult
+    const parsedRunId = parseId(runId, 'Local Agent runId')
+    // An approved write now resumes the loop instead of ending the run, so the
+    // resumed rounds need the same cancellable controller the first dispatch
+    // had — otherwise cancel would have nothing to abort until the next
+    // approval card appears.
+    const controller = new AbortController()
+    localAgentControllers.set(parsedRunId, controller)
+    try {
+      const result = await input.localAgentHost.approve({
+        runId: parsedRunId,
+        holderId: LOCAL_AGENT_HOLDER_ID,
+        leaseTtlMs: LOCAL_AGENT_LEASE_TTL_MS,
+        signal: controller.signal,
+      })
+      if (result.status === 'waiting_approval') {
+        const requestedLocalPath = extractToolCallPath(result.approval.arguments)
+        const localPath = requestedLocalPath ? await resolveLocalPath(requestedLocalPath) : null
+        return {
+          status: result.status,
+          runId: result.runId,
+          approval: {
+            ...result.approval,
+            ...(localPath ? { localPath } : {}),
+          },
+        } satisfies DesktopLocalAgentRunResult
+      }
+      return {
+        status: result.status,
+        runId: result.run.id,
+        assistantText: result.assistantText,
+        errorCode: result.errorCode,
+      } satisfies DesktopLocalAgentRunResult
+    } finally {
+      localAgentControllers.delete(parsedRunId)
+    }
   })
   handle(DESKTOP_IPC.localAgentCancel, async (_event, runId: unknown) => {
     const parsedRunId = parseId(runId, 'Local Agent runId')
@@ -1584,6 +1653,25 @@ async function start(): Promise<void> {
   await registerMediaProtocol(registry)
   const fileSystem = new FileSystemService(registry)
   const handles = new DesktopHandleStore(join(privateDataPath, 'handles.json'), registry)
+  // Re-authorize folders the user previously approved. Without this the grant
+  // would silently expire on every restart and the prompt would return.
+  const restoredGrants = await handles.restore(['granted-path'])
+  if (restoredGrants > 0) log(`restored granted paths: ${restoredGrants}`)
+  const grantLocalPath = async (path: string): Promise<void> => {
+    // Registration resolves the real path, so an uncorrected whitespace variant
+    // would throw and leave the grant unsaved — bringing the second prompt back.
+    const target = await resolveLocalPath(path)
+    const handle = await registry.register(target)
+    await handles.save({
+      kind: 'granted-path',
+      // Path-derived so re-approving the same folder updates one record
+      // instead of accumulating duplicates.
+      id: createHash('sha256').update(target).digest('hex').slice(0, 32),
+      handle,
+      pickedAt: Date.now(),
+      lastSeenPath: target,
+    })
+  }
   const developmentWorkspace = app.isPackaged ? '' : process.env.FREECUT_DEV_WORKSPACE?.trim()
   if (developmentWorkspace) {
     const handle = await registry.register(developmentWorkspace)
@@ -1693,6 +1781,7 @@ async function start(): Promise<void> {
   const localAgentHost = new LocalAgentHostService({
     runtime: agentRuntime,
     bridge,
+    authorizeLocalPath: grantLocalPath,
     transport: {
       run: async ({ request }, signal) => {
         if (signal.aborted) throw new Error('Local Agent run was cancelled.')
@@ -1897,6 +1986,7 @@ async function start(): Promise<void> {
     tasks,
     agentRuntime,
     localAgentHost,
+    grantLocalPath,
     updateMode,
     checkNotificationUpdate,
     openNotificationUpdate,
@@ -1911,6 +2001,26 @@ async function start(): Promise<void> {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send(DESKTOP_IPC.bridgeCancelCall, requestId)
     }
+  })
+  // A local run can take a minute across a dozen rounds. Without this the
+  // sidebar shows one spinner for the whole thing and the user cannot tell a
+  // working run from a hung one.
+  const removeLocalAgentEventListener = agentRuntime.onEvent((event) => {
+    if (!event.runId || !mainWindow || mainWindow.isDestroyed()) return
+    const toolName =
+      event.payload &&
+      typeof event.payload === 'object' &&
+      !Array.isArray(event.payload) &&
+      typeof event.payload.toolName === 'string'
+        ? event.payload.toolName
+        : undefined
+    mainWindow.webContents.send(DESKTOP_IPC.localAgentEvent, {
+      runId: event.runId,
+      threadId: event.threadId,
+      eventType: event.eventType,
+      ...(toolName ? { toolName } : {}),
+      createdAt: event.createdAt,
+    } satisfies DesktopLocalAgentEvent)
   })
 
   mainWindow = await createWindow(join(__dirname, 'preload.cjs'), log)
@@ -1931,6 +2041,7 @@ async function start(): Promise<void> {
     }
     removeBridgeListener()
     removeBridgeCancelListener()
+    removeLocalAgentEventListener()
     bridge.dispose()
     cloudBridge.dispose()
     transcriptions.dispose()

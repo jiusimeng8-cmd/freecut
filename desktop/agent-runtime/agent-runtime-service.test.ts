@@ -232,4 +232,96 @@ describe('AgentRuntimeService', () => {
       }),
     )
   })
+
+  it('notifies event subscribers for both putRecords and completeRun writes', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'freecut-agent-runtime-events-'))
+    roots.push(root)
+    const now = 1_000
+    const runtime = new AgentRuntimeService(join(root, 'agent-runtime'), {
+      logsPath: join(root, 'logs', 'main.log'),
+      now: () => now,
+    })
+    await runtime.initialize()
+
+    const seen: string[] = []
+    const unsubscribe = runtime.onEvent((event) => {
+      seen.push(event.eventType)
+    })
+
+    await runtime.putRecords({
+      records: [
+        {
+          kind: 'thread',
+          id: 'thread-events',
+          threadId: 'thread-events',
+          workspaceId: 'workspace-events',
+          projectId: 'project-events',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+    })
+    const started = await runtime.startRun({
+      id: 'run-events',
+      threadId: 'thread-events',
+      projectId: 'project-events',
+      timelineId: 'timeline-events',
+      holderId: 'holder-events',
+      leaseTtlMs: 10_000,
+    })
+    if (!started.started) throw new Error('Expected run to start.')
+
+    await runtime.putRecords({
+      records: [
+        {
+          kind: 'event',
+          id: 'event-mid',
+          threadId: 'thread-events',
+          runId: 'run-events',
+          eventType: 'toolReceipt',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+    })
+
+    await runtime.completeRun({
+      runId: 'run-events',
+      timelineId: 'timeline-events',
+      holderId: 'holder-events',
+      fence: started.lease.fence,
+      status: 'succeeded',
+      additionalRecords: [
+        {
+          kind: 'event',
+          id: 'event-final',
+          threadId: 'thread-events',
+          runId: 'run-events',
+          eventType: 'directorFinal',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+    })
+
+    // completeRun writes through the store directly because it needs the fence,
+    // so it bypasses putRecords entirely. The terminal event is the one the UI
+    // waits for, so a channel that goes quiet exactly there is worse than none.
+    expect(seen).toEqual(['toolReceipt', 'directorFinal'])
+
+    unsubscribe()
+    await runtime.putRecords({
+      records: [
+        {
+          kind: 'event',
+          id: 'event-after',
+          threadId: 'thread-events',
+          eventType: 'toolReceipt',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+    })
+    expect(seen).toEqual(['toolReceipt', 'directorFinal'])
+  })
 })

@@ -223,6 +223,15 @@ describe('Desktop IPC validation', () => {
     }
 
     expect(parseLocalAgentRunInput(input)).toEqual(input)
+    // The timeline the Renderer built is the model's only grounding in the
+    // project. A strict schema that has not been taught this key rejects the
+    // whole run, so the panel fails outright rather than degrading.
+    expect(
+      parseLocalAgentRunInput({
+        ...input,
+        timelineContext: 'Project: 12.0s long at 60fps.\n  c1 video "a.mp4" 0.0-4.0s',
+      }).timelineContext,
+    ).toBe('Project: 12.0s long at 60fps.\n  c1 video "a.mp4" 0.0-4.0s')
     expect(
       parseLocalAgentRecordListInput({
         threadId: 'project:project-1',

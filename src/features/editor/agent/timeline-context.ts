@@ -9,7 +9,10 @@
 import { useTimelineStore } from '@/features/editor/deps/timeline-store'
 import { usePlaybackStore } from '@/shared/state/playback'
 import { useSelectionStore } from '@/shared/state/selection'
-import { buildClipRefs } from './tools'
+// Imported from the module rather than the ./tools barrel: the barrel pulls in
+// the whole platform tool registry, and building a few lines of text should not
+// drag every tool's schema into the caller's import graph.
+import { buildClipRefs } from './tools/clip-refs'
 
 function formatSeconds(value: number): string {
   return value.toFixed(1)

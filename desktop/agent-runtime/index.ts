@@ -1,5 +1,6 @@
 export { AgentRuntimeService } from './agent-runtime-service'
 export {
+  LOCAL_DIRECTOR_MAX_DISCOVERY_ROUNDS,
   LOCAL_DIRECTOR_MAX_ROUNDS,
   LOCAL_DIRECTOR_MAX_TOOL_CALLS_PER_ROUND,
   LocalDirectorLoop,
@@ -45,6 +46,7 @@ export type {
   LocalDirectorLoopDependencies,
   LocalDirectorLoopInput,
   LocalDirectorLoopResult,
+  LocalDirectorResumeState,
   LocalDirectorTool,
   LocalDirectorToolAccess,
   LocalDirectorToolCall,

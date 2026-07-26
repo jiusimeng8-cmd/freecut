@@ -5,3 +5,4 @@ export {
   type DesktopHandleKind,
   type DesktopHandleStoreEntry,
 } from './handle-store'
+export { findWhitespaceVariantPath, resolveExistingPath } from './whitespace-path'

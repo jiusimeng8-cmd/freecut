@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   getLocalHandles: vi.fn(),
   importHandles: vi.fn(),
+  importHandlesToLibrary: vi.fn(),
   buildEntries: vi.fn(),
   resolveTargets: vi.fn(),
   getDuration: vi.fn(),
@@ -21,7 +22,10 @@ vi.mock('@/infrastructure/storage/dev-workspace-handle', () => ({
 vi.mock('@/features/editor/deps/media-library', () => ({
   resolveMediaUrl: mocks.resolveMediaUrl,
   useMediaLibraryStore: {
-    getState: () => ({ importHandlesForPlacement: mocks.importHandles }),
+    getState: () => ({
+      importHandlesForPlacement: mocks.importHandles,
+      importHandles: mocks.importHandlesToLibrary,
+    }),
   },
 }))
 
@@ -61,7 +65,50 @@ vi.mock('@/shared/state/selection', () => ({
   },
 }))
 
-import { importLocalMediaToTimeline } from './local-media-import'
+import { importLocalMediaToLibrary, importLocalMediaToTimeline } from './local-media-import'
+
+describe('importLocalMediaToLibrary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.getLocalHandles.mockResolvedValue([{ name: 'clip.mp4' }])
+    mocks.importHandlesToLibrary.mockResolvedValue([{ id: 'media-1' }])
+  })
+
+  it('reports the candidate count alongside the imported media', async () => {
+    mocks.getLocalHandles.mockResolvedValue([{ name: 'a.mp4' }, { name: 'b.mp4' }])
+
+    await expect(importLocalMediaToLibrary('C:\\clips')).resolves.toEqual({
+      imported: [{ id: 'media-1' }],
+      candidateCount: 2,
+    })
+  })
+
+  it('reports zero imported without throwing so the caller can explain why', async () => {
+    mocks.importHandlesToLibrary.mockResolvedValue([])
+
+    await expect(importLocalMediaToLibrary('C:\\clips')).resolves.toEqual({
+      imported: [],
+      candidateCount: 1,
+    })
+  })
+
+  it('suggests recursive enumeration when a non-recursive scan finds nothing', async () => {
+    mocks.getLocalHandles.mockResolvedValue([])
+
+    await expect(importLocalMediaToLibrary('C:\\empty')).rejects.toThrow('recursive: true')
+  })
+
+  it('does not suggest recursion when a recursive scan already found nothing', async () => {
+    mocks.getLocalHandles.mockResolvedValue([])
+
+    await expect(importLocalMediaToLibrary('C:\\empty', 'copy', true)).rejects.toThrow(
+      'The local path contains no files.',
+    )
+    await expect(importLocalMediaToLibrary('C:\\empty', 'copy', true)).rejects.not.toThrow(
+      /recursive: true/,
+    )
+  })
+})
 
 describe('importLocalMediaToTimeline', () => {
   beforeEach(() => {

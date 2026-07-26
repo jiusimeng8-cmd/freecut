@@ -5,6 +5,7 @@ import {
   readCloudSnapshotComposite,
 } from './cloud-bridge-snapshots'
 import { getCloudAgentProfileId } from './cloud-agent-config-store'
+import { buildTimelineContext } from './timeline-context'
 import type { ChatMessage } from './agent-store'
 
 export type LocalAgentRunStatus =
@@ -19,6 +20,11 @@ export interface LocalAgentApproval {
   id: string
   name: string
   arguments?: unknown
+  /**
+   * Absolute local path this write will access. Approving the card authorizes
+   * it, so the UI must show it.
+   */
+  localPath?: string
 }
 
 export interface LocalAgentRunResult {
@@ -38,6 +44,17 @@ interface LocalAgentRecord {
   sequence?: number
 }
 
+/**
+ * A progress event pushed from Main while a run is still in flight.
+ */
+export interface LocalAgentEvent {
+  runId: string
+  threadId: string
+  eventType: string
+  toolName?: string
+  createdAt: number
+}
+
 interface LocalAgentHostApi {
   run(input: {
     runId: string
@@ -49,6 +66,7 @@ interface LocalAgentHostApi {
     snapshotId: string
     fingerprint: string
     userMessage: string
+    timelineContext?: string
   }): Promise<LocalAgentRunResult>
   approve(runId: string): Promise<LocalAgentRunResult>
   cancel(runId: string): Promise<boolean>
@@ -56,6 +74,7 @@ interface LocalAgentHostApi {
     threadId: string
     kinds: string[]
   }): Promise<{ records: LocalAgentRecord[] }>
+  onEvent?(listener: (event: LocalAgentEvent) => void): () => void
 }
 
 type DesktopWithLocalAgentHost = NonNullable<Window['freecutDesktop']> & {
@@ -133,6 +152,11 @@ export async function runLocalAgent(
     throw new Error('本地 Agent Host 未就绪，请从剪好桌面应用启动项目。')
   }
 
+  // Built here rather than in Main: the timeline lives in Renderer stores, and
+  // building it also refreshes the ref→id map the tools resolve "c1" against,
+  // so the refs the model is shown are the ones a later call can act on.
+  const timelineContext = buildTimelineContext().text
+
   return host.run({
     runId: options.runId,
     threadId: localAgentThreadId(projectId),
@@ -143,6 +167,7 @@ export async function runLocalAgent(
     snapshotId,
     fingerprint: snapshot.fingerprints.composite,
     userMessage: userText,
+    timelineContext,
   })
 }
 
@@ -158,4 +183,17 @@ export async function approveLocalAgentRun(runId: string): Promise<LocalAgentRun
     throw new Error('本地 Agent Host 未就绪，请从剪好桌面应用启动项目。')
   }
   return host.approve(runId)
+}
+
+/**
+ * Subscribes to run progress. Returns a no-op unsubscribe when the host predates
+ * the channel, so a stale preload degrades to the old silent run rather than
+ * breaking the panel.
+ */
+export function subscribeToLocalAgentEvents(
+  listener: (event: LocalAgentEvent) => void,
+): () => void {
+  const host = localAgentHost()
+  if (!host?.onEvent) return () => undefined
+  return host.onEvent(listener)
 }

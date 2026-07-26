@@ -1,6 +1,6 @@
 import { mkdir, readdir, rename, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { runProcess } from '../../services/process-runner'
+import { resolveSystemExecutable, runProcess } from '../../services/process-runner'
 
 const PRIVATE_FILE_NAMES = ['handles.json', 'tasks.json', 'credentials.json']
 
@@ -10,7 +10,7 @@ async function currentUserSid(): Promise<string> {
   if (currentUserSidPromise) return currentUserSidPromise
   currentUserSidPromise = (async () => {
     const result = await runProcess({
-      executable: 'whoami.exe',
+      executable: resolveSystemExecutable('whoami.exe'),
       args: ['/user', '/fo', 'csv', '/nh'],
       timeoutMs: 10_000,
       maxOutputBytes: 64 * 1024,
@@ -28,7 +28,7 @@ async function restrictWindowsPath(path: string, directory: boolean): Promise<vo
   const sid = await currentUserSid()
   const inheritance = directory ? '(OI)(CI)F' : 'F'
   const result = await runProcess({
-    executable: 'icacls.exe',
+    executable: resolveSystemExecutable('icacls.exe'),
     args: [
       path,
       '/inheritance:r',

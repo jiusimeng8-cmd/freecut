@@ -129,6 +129,26 @@ function queueImportPreparationTask(tempId: string): void {
   preparationStore.updateTask(tempId, 'import', { status: 'queued', progress: 0.05 })
 }
 
+/**
+ * Breakdown of the most recent import, for callers that must explain a
+ * zero-result import. `importHandles` returns only the newly added media, so an
+ * empty array is ambiguous on its own: every file may have been a duplicate, or
+ * every file may have failed. Those need different advice, and the counts are
+ * already computed here — dropping them forces the caller to guess.
+ */
+export interface LastImportBreakdown {
+  requested: number
+  imported: number
+  duplicates: string[]
+  failed: number
+}
+
+let lastImportBreakdown: LastImportBreakdown | null = null
+
+export function getLastImportBreakdown(): LastImportBreakdown | null {
+  return lastImportBreakdown
+}
+
 function markImportPreparationRunning(tempId: string): void {
   useMediaPreparationStore
     .getState()
@@ -378,6 +398,9 @@ export function createImportActions(
     },
   ): Promise<MediaMetadata[]> => {
     const { currentProjectId } = get()
+    // Cleared up front so a caller reading the breakdown after an early return
+    // cannot mistake the previous import's numbers for this one's.
+    lastImportBreakdown = null
 
     if (!currentProjectId) {
       set({ error: 'No project selected' })
@@ -404,6 +427,13 @@ export function createImportActions(
 
     const { results, importedCount, duplicateNames, unsupportedCodecFiles, failedCount } =
       processImportResults(importResults, importTasks, set, options)
+
+    lastImportBreakdown = {
+      requested: handles.length,
+      imported: importedCount,
+      duplicates: duplicateNames,
+      failed: failedCount,
+    }
 
     showImportNotifications(importedCount, duplicateNames, unsupportedCodecFiles, failedCount, get)
 

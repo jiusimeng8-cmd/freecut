@@ -25,6 +25,7 @@ export {
   type DesktopTaskStatus,
 } from './task-repository'
 export { TranscriptionTaskService } from './transcription-task-service'
+export { extractToolCallPath } from './tool-call-path'
 export {
   UpdateNotificationService,
   type DesktopReleaseNotification,

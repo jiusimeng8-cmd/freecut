@@ -12,7 +12,7 @@ import {
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { runProcess } from '../../services/process-runner'
+import { resolveSystemExecutable, runProcess } from '../../services/process-runner'
 
 interface TtsInput {
   text: string
@@ -128,7 +128,7 @@ export class WindowsTtsService {
   async listVoices(): Promise<Array<{ id: string; name: string; language?: string }>> {
     const encoded = Buffer.from(LIST_VOICES_SCRIPT, 'utf16le').toString('base64')
     const result = await runProcess({
-      executable: 'powershell.exe',
+      executable: resolveSystemExecutable('WindowsPowerShell\\v1.0\\powershell.exe'),
       args: ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
       timeoutMs: 30_000,
     })
@@ -157,7 +157,7 @@ export class WindowsTtsService {
       await writeFile(inputPath, JSON.stringify(input))
       await writeFile(scriptPath, SYNTHESIZE_SCRIPT)
       const result = await runProcess({
-        executable: 'powershell.exe',
+        executable: resolveSystemExecutable('WindowsPowerShell\\v1.0\\powershell.exe'),
         args: [
           '-NoLogo',
           '-NoProfile',

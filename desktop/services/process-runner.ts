@@ -1,9 +1,22 @@
 import { spawn } from 'node:child_process'
+import { join } from 'node:path'
 
 export interface ProcessResult {
   exitCode: number
   stdout: string
   stderr: string
+}
+
+const SYSTEM32_DIRECTORY = join(process.env.SystemRoot || process.env.windir || 'C:\\Windows', 'System32')
+
+/**
+ * Resolves a well-known Windows system executable to its absolute path under
+ * `%SystemRoot%\System32` instead of relying on PATH resolution, which can be
+ * shadowed by non-Windows tools of the same name (e.g. Git for Windows ships
+ * a GNU `whoami` that rejects Windows-style flags like `/user`).
+ */
+export function resolveSystemExecutable(relativePath: string): string {
+  return join(SYSTEM32_DIRECTORY, relativePath)
 }
 
 export async function runProcess(input: {

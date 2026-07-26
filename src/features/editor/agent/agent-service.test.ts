@@ -99,6 +99,9 @@ describe('Local Agent Host client', () => {
       snapshotId: 'local:project-1:snapshot-1',
       fingerprint: 'fnv1a64:timeline-1',
       userMessage: '读取时间线',
+      // Grounding text the model can't get any other way — Main has no access to
+      // the timeline stores, so a run that leaves this out is a blind one.
+      timelineContext: expect.stringContaining('Project:'),
     })
   })
 
