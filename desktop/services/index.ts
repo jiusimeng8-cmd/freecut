@@ -7,6 +7,10 @@ export {
   type DashScopeAsrSubmission,
 } from './dashscope-asr-service'
 export { CloudBridgeService } from './cloud-bridge-service'
+export {
+  createCloudAgentTurnTransport,
+  type CloudAgentTurnTransportOptions,
+} from './cloud-agent-turn-transport'
 export { DiagnosticsService } from './diagnostics-service'
 export { FfmpegService, type FfmpegPaths } from './ffmpeg-service'
 export {

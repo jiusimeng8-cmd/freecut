@@ -74,6 +74,7 @@ import { createMediaProtocolResponse } from './media-protocol-response'
 import {
   CredentialStore,
   CloudBridgeService,
+  createCloudAgentTurnTransport,
   DashScopeAsrService,
   DiagnosticsService,
   type DesktopReleaseNotification,
@@ -112,9 +113,7 @@ type DesktopUpdateMode = 'disabled' | 'automatic' | 'notification'
 
 const isE2eMode = process.env.FREECUT_E2E === '1'
 const e2eProjectId = isE2eMode ? process.env.FREECUT_E2E_PROJECT_ID?.trim() : undefined
-const e2eRequestedUserDataPath = isE2eMode
-  ? process.env.FREECUT_E2E_USER_DATA?.trim()
-  : undefined
+const e2eRequestedUserDataPath = isE2eMode ? process.env.FREECUT_E2E_USER_DATA?.trim() : undefined
 if (isE2eMode) {
   if (!e2eRequestedUserDataPath || !isAbsolute(e2eRequestedUserDataPath)) {
     throw new Error('FREECUT_E2E_USER_DATA must be an absolute path in E2E mode.')
@@ -471,7 +470,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
 
-function requireExactKeys(value: Record<string, unknown>, keys: readonly string[], label: string): void {
+function requireExactKeys(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+  label: string,
+): void {
   const allowed = new Set(keys)
   if (Object.keys(value).some((key) => !allowed.has(key))) {
     throw new Error(`${label} contains unsupported fields.`)
@@ -516,7 +519,11 @@ function parseAgentTurnResponse(
     requireExactKeys(rawCall, ['id', 'name', 'arguments'], 'Agent Turn toolCall')
     const id = requireString(rawCall.id, 'Agent Turn toolCall id', 160)
     const name = requireString(rawCall.name, 'Agent Turn toolCall name', 160)
-    if (!toolNames.has(name) || !isRecord(rawCall.arguments) || !isAgentJsonValue(rawCall.arguments)) {
+    if (
+      !toolNames.has(name) ||
+      !isRecord(rawCall.arguments) ||
+      !isAgentJsonValue(rawCall.arguments)
+    ) {
       throw new Error('Agent Turn toolCall is invalid.')
     }
     return { id, name, arguments: rawCall.arguments }
@@ -1232,9 +1239,7 @@ function registerIpc(input: {
         holderId: LOCAL_AGENT_HOLDER_ID,
         leaseTtlMs: LOCAL_AGENT_LEASE_TTL_MS,
         userMessage: run.userMessage,
-        ...(run.timelineContext === undefined
-          ? {}
-          : { timelineContext: run.timelineContext }),
+        ...(run.timelineContext === undefined ? {} : { timelineContext: run.timelineContext }),
         signal: controller.signal,
       })
       if (result.status === 'completed') {
@@ -1782,37 +1787,12 @@ async function start(): Promise<void> {
     runtime: agentRuntime,
     bridge,
     authorizeLocalPath: grantLocalPath,
-    transport: {
-      run: async ({ request }, signal) => {
-        if (signal.aborted) throw new Error('Local Agent run was cancelled.')
-        const baseUrl = await credentials.get(
-          DESKTOP_CREDENTIAL_ORIGIN_KEYS.cloudBridgeBusinessKey,
-        )
-        if (!baseUrl) {
-          throw Object.assign(new Error('请先配置剪好 MCP Key。'), {
-            code: 'LOCAL_AGENT_NOT_CONFIGURED',
-          })
-        }
-        const requestId = crypto.randomUUID()
-        const cancel = () => {
-          void cloudBridge.cancel(requestId)
-        }
-        signal.addEventListener('abort', cancel, { once: true })
-        try {
-          const response = await cloudBridge.request({
-            requestId,
-            baseUrl,
-            method: 'POST',
-            path: '/api/v1/agent-turns',
-            timeoutMs: AGENT_TURN_TIMEOUT_MS,
-            body: request,
-          })
-          return parseAgentTurnResponse(response, request)
-        } finally {
-          signal.removeEventListener('abort', cancel)
-        }
-      },
-    },
+    transport: createCloudAgentTurnTransport({
+      credentials,
+      cloudBridge,
+      parseResponse: parseAgentTurnResponse,
+      timeoutMs: AGENT_TURN_TIMEOUT_MS,
+    }),
   })
   const asr = new DashScopeAsrService(credentials)
   const transcriptions = new TranscriptionTaskService(tasks, asr)
@@ -1833,15 +1813,12 @@ async function start(): Promise<void> {
   const automaticUpdatesEnabled = app.isPackaged && releaseChannel === 'production'
   const notificationUpdates =
     app.isPackaged && packageMetadata.updateMode === 'notification'
-      ? new UpdateNotificationService(
-          packageMetadata.updateManifestUrl,
-          app.getVersion(),
-          (url) =>
-            net.fetch(url, {
-              method: 'GET',
-              cache: 'no-store',
-              signal: AbortSignal.timeout(15_000),
-            }),
+      ? new UpdateNotificationService(packageMetadata.updateManifestUrl, app.getVersion(), (url) =>
+          net.fetch(url, {
+            method: 'GET',
+            cache: 'no-store',
+            signal: AbortSignal.timeout(15_000),
+          }),
         )
       : null
   const updateMode: DesktopUpdateMode = notificationUpdates
@@ -1857,9 +1834,7 @@ async function start(): Promise<void> {
     }
     await shell.openExternal(latestNotificationUpdate.downloadUrl)
   }
-  const checkNotificationUpdate = async (
-    showPrompt = false,
-  ): Promise<DesktopUpdateStatus> => {
+  const checkNotificationUpdate = async (showPrompt = false): Promise<DesktopUpdateStatus> => {
     if (!notificationUpdates) return desktopUpdateStatus
     try {
       setDesktopUpdateStatus({ phase: 'checking' })
@@ -2045,9 +2020,9 @@ async function start(): Promise<void> {
     bridge.dispose()
     cloudBridge.dispose()
     transcriptions.dispose()
-    void agentRuntime.dispose().catch((error) =>
-      log(`[FREECUT_AGENT_RUNTIME] dispose failed: ${String(error)}`),
-    )
+    void agentRuntime
+      .dispose()
+      .catch((error) => log(`[FREECUT_AGENT_RUNTIME] dispose failed: ${String(error)}`))
     void fileSystem.dispose()
     void bridgeHttp.close().catch((error) => log(`bridge close failed: ${String(error)}`))
     void rm(bridgeInfoPath, { force: true })

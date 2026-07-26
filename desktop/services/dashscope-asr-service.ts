@@ -1,10 +1,19 @@
 import { randomUUID } from 'node:crypto'
 import { openAsBlob } from 'node:fs'
 import { basename } from 'node:path'
-import { DESKTOP_CREDENTIAL_KEYS, DESKTOP_CREDENTIAL_ORIGIN_KEYS } from '../desktop-types'
+import {
+  DESKTOP_CLOUD_BASE_URL,
+  DESKTOP_CREDENTIAL_KEYS,
+  DESKTOP_CREDENTIAL_ORIGIN_KEYS,
+} from '../desktop-types'
 import type { CredentialStore } from './credential-store'
 
-const DEFAULT_CLOUD_BASE_URL = 'https://mcp.123jianhao.com'
+/**
+ * The trusted service base. Shared with the agent transport so the two
+ * credential-bound cloud paths cannot drift onto different origins — one
+ * hardened and the other not.
+ */
+const DEFAULT_CLOUD_BASE_URL = DESKTOP_CLOUD_BASE_URL
 const FALLBACK_MAX_AUDIO_BYTES = 1024 * 1024 * 1024
 /** Silent media: the cloud reports it as a distinct, non-retryable outcome. */
 const NO_SPEECH_ERROR_CODE = 'ASR_NO_SPEECH_DETECTED'

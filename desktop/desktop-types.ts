@@ -60,6 +60,16 @@ export const DESKTOP_CREDENTIAL_ORIGIN_KEYS = {
   cloudBridgeBusinessKey: 'cloud-bridge.origin',
 } as const
 
+/**
+ * The built-in cloud service address, trusted independently of anything stored
+ * on disk. The bound-origin checks compare a stored credential origin against
+ * this constant, so a request base derived from that same stored origin turns
+ * the check into a comparison of the credential against itself — which can
+ * never fail. Every Main-initiated cloud call therefore starts here, not from
+ * `cloud-bridge.origin`.
+ */
+export const DESKTOP_CLOUD_BASE_URL = 'https://mcp.123jianhao.com'
+
 export interface DesktopEntryDescriptor {
   name: string
   kind: 'file' | 'directory'
