@@ -8,7 +8,10 @@ import {
 
 beforeEach(() => {
   localStorage.removeItem('freecut:agent-profile')
-  useCloudAgentConfigStore.setState({ profileId: DEFAULT_AGENT_PROFILE_ID })
+  useCloudAgentConfigStore.setState({
+    profileId: DEFAULT_AGENT_PROFILE_ID,
+    autoApprove: false,
+  })
 })
 
 describe('cloud agent profile configuration', () => {
@@ -19,16 +22,20 @@ describe('cloud agent profile configuration', () => {
   it('exposes fast and expert product profiles without binding an upstream model', () => {
     expect(CLOUD_AGENT_PROFILE_OPTIONS).toEqual([
       { id: 'smart-edit-fast', label: '快速' },
-      { id: 'smart-edit-expert', label: '专家' },
+      { id: 'smart-edit-expert', label: '专家X2' },
     ])
   })
 
-  it('persists only the selected profile id', () => {
+  it('persists the selected profile and auto-approval preference', () => {
     useCloudAgentConfigStore.getState().updateProfileId('multimodal-editing-director')
+    useCloudAgentConfigStore.getState().updateAutoApprove(true)
 
     expect(getCloudAgentProfileId()).toBe('multimodal-editing-director')
     expect(JSON.parse(localStorage.getItem('freecut:agent-profile') ?? '{}')).toEqual({
-      state: { profileId: 'multimodal-editing-director' },
+      state: {
+        profileId: 'multimodal-editing-director',
+        autoApprove: true,
+      },
       version: 0,
     })
   })

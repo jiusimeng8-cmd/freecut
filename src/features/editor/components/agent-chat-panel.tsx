@@ -3,12 +3,10 @@ import { Check, KeyRound, Loader2, Send, Sparkles, Trash2, X } from 'lucide-reac
 import { Button } from '@/components/ui/button'
 import { useProjectStore } from '@/features/editor/deps/projects'
 import { cn } from '@/shared/ui/cn'
-import {
-  isCloudMcpConfigured,
-  useCloudMcpConfigStore,
-} from '@/shared/state/cloud-mcp-config-store'
+import { isCloudMcpConfigured, useCloudMcpConfigStore } from '@/shared/state/cloud-mcp-config-store'
 import { useAgentStore } from '../agent'
-import { CloudAgentSettingsPopover } from './cloud-agent-settings-popover'
+import { useCloudAgentConfigStore } from '../agent/cloud-agent-config-store'
+import { CloudAgentSettingsPopover, ModeSegmentedControl } from './cloud-agent-settings-popover'
 import { useCloudAiSettingsStore } from '@/shared/state/cloud-ai-settings-store'
 
 const SUGGESTIONS = [
@@ -90,6 +88,7 @@ export const AgentChatPanel = memo(function AgentChatPanel() {
   const modelStatus = useAgentStore((state) => state.modelStatus)
   const loadError = useAgentStore((state) => state.loadError)
   const submit = useAgentStore((state) => state.submit)
+  const approve = useAgentStore((state) => state.approve)
   const cancel = useAgentStore((state) => state.cancel)
   const clearChat = useAgentStore((state) => state.clearChat)
   const loadProjectConversation = useAgentStore((state) => state.loadProjectConversation)
@@ -100,6 +99,10 @@ export const AgentChatPanel = memo(function AgentChatPanel() {
   // safeStorage, so this flag is what actually changes on a successful save.
   // It must be subscribed here or the panel keeps showing the setup prompt.
   const businessKeyConfigured = useCloudMcpConfigStore((state) => state.businessKeyConfigured)
+  const profileId = useCloudAgentConfigStore((state) => state.profileId)
+  const updateProfileId = useCloudAgentConfigStore((state) => state.updateProfileId)
+  const autoApprove = useCloudAgentConfigStore((state) => state.autoApprove)
+  const updateAutoApprove = useCloudAgentConfigStore((state) => state.updateAutoApprove)
 
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -113,6 +116,12 @@ export const AgentChatPanel = memo(function AgentChatPanel() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [messages, phase])
+
+  useEffect(() => {
+    if (autoApprove && phase === 'waiting-approval') {
+      void approve()
+    }
+  }, [approve, autoApprove, phase])
 
   const send = useCallback(
     (text: string) => {
@@ -249,6 +258,24 @@ export const AgentChatPanel = memo(function AgentChatPanel() {
               <Send className="h-4 w-4" />
             </Button>
           )}
+        </div>
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <div className="w-24">
+            <ModeSegmentedControl value={profileId} onChange={updateProfileId} />
+          </div>
+          <button
+            type="button"
+            aria-pressed={autoApprove}
+            onClick={() => updateAutoApprove(!autoApprove)}
+            className={cn(
+              'h-[18px] rounded-full border px-2 text-[10px] font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              autoApprove
+                ? 'border-white/20 bg-gradient-to-b from-[#a9a9a9] to-[#7d7d7d] text-[#181818] shadow-[0_1px_2px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.4)]'
+                : 'border-white/5 bg-[#232326] text-[#8f8f93] shadow-[inset_0_1px_2px_rgba(0,0,0,0.75)] hover:text-[#cfcfd2]',
+            )}
+          >
+            自动审批
+          </button>
         </div>
         {messages.length > 0 && (
           <div className="mt-1.5 flex justify-end">

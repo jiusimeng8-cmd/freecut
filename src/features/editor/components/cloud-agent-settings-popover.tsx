@@ -7,10 +7,7 @@ import {
   BUILT_IN_CLOUD_MCP_BASE_URL,
   useCloudMcpConfigStore,
 } from '@/shared/state/cloud-mcp-config-store'
-import {
-  CLOUD_AGENT_PROFILE_OPTIONS,
-  useCloudAgentConfigStore,
-} from '../agent/cloud-agent-config-store'
+import { CLOUD_AGENT_PROFILE_OPTIONS } from '../agent/cloud-agent-config-store'
 import { useAgentStore } from '../agent'
 import { useCloudAiSettingsStore } from '@/shared/state/cloud-ai-settings-store'
 
@@ -23,12 +20,9 @@ export function CloudAgentSettingsPopover() {
   const bridgeBusinessKeyConfigured = useCloudMcpConfigStore((state) => state.businessKeyConfigured)
   const updateBridgeConfig = useCloudMcpConfigStore((state) => state.updateConfig)
   const clearBridgeConfig = useCloudMcpConfigStore((state) => state.clearConfig)
-  const profileId = useCloudAgentConfigStore((state) => state.profileId)
-  const updateProfileId = useCloudAgentConfigStore((state) => state.updateProfileId)
   const resetConnection = useAgentStore((state) => state.resetConnection)
 
   const [businessKeyDraft, setBusinessKeyDraft] = useState(bridgeBusinessKey)
-  const [profileIdDraft, setProfileIdDraft] = useState(profileId)
   const [showApiKey, setShowApiKey] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -36,12 +30,9 @@ export function CloudAgentSettingsPopover() {
   useEffect(() => {
     if (!open) return
     setBusinessKeyDraft(bridgeBusinessKey)
-    setProfileIdDraft(profileId)
-  }, [bridgeBusinessKey, open, profileId])
+  }, [bridgeBusinessKey, open])
 
-  const canSave = Boolean(
-    (businessKeyDraft.trim() || bridgeBusinessKeyConfigured) && profileIdDraft.trim(),
-  )
+  const canSave = Boolean(businessKeyDraft.trim() || bridgeBusinessKeyConfigured)
 
   const save = async () => {
     setSaving(true)
@@ -52,7 +43,6 @@ export function CloudAgentSettingsPopover() {
           baseUrl: BUILT_IN_CLOUD_MCP_BASE_URL,
           businessKey: businessKeyDraft,
         })
-        updateProfileId(profileIdDraft)
         resetConnection()
       }
       closeSettings()
@@ -130,10 +120,6 @@ export function CloudAgentSettingsPopover() {
           保存配置
         </Button>
 
-        <div className="space-y-1.5">
-          <span className="text-[11px] font-medium text-muted-foreground">工作模式</span>
-          <ModeSegmentedControl value={profileIdDraft} onChange={setProfileIdDraft} />
-        </div>
         {bridgeBusinessKeyConfigured && (
           <Button
             size="sm"
@@ -159,7 +145,7 @@ export function CloudAgentSettingsPopover() {
  * selection animate instead of jumping. Labels sit above it so the moving
  * surface never covers the text mid-transition.
  */
-function ModeSegmentedControl({
+export function ModeSegmentedControl({
   value,
   onChange,
 }: {
@@ -171,39 +157,39 @@ function ModeSegmentedControl({
     0,
     options.findIndex((option) => option.id === value),
   )
+  const activeOption = options[activeIndex]!
+  const nextOption = options[(activeIndex + 1) % options.length]!
 
   return (
-    <div
-      role="radiogroup"
-      aria-label="工作模式"
-      className="relative flex rounded-full bg-[#212121] p-1"
+    <button
+      type="button"
+      aria-label={`工作模式，当前${activeOption.label}，点击切换`}
+      onClick={() => onChange(nextOption.id)}
+      className="relative flex h-[18px] w-full rounded-full border border-white/5 bg-[#232326] p-0.5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.75)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span
         aria-hidden
-        className="absolute inset-y-1 rounded-full bg-gradient-to-b from-[#c7c7c7] to-[#acacac] shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none"
+        className="absolute inset-y-0.5 rounded-full border border-white/20 bg-gradient-to-b from-[#a9a9a9] to-[#7d7d7d] shadow-[0_1px_2px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.4)] transition-transform duration-200 ease-out motion-reduce:transition-none"
         style={{
-          width: `calc((100% - 0.5rem) / ${options.length})`,
+          width: `calc((100% - 0.25rem) / ${options.length})`,
           transform: `translateX(${activeIndex * 100}%)`,
         }}
       />
       {options.map((option) => {
         const selected = option.id === value
         return (
-          <button
+          <span
             key={option.id}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            onClick={() => onChange(option.id)}
-            className={`relative z-10 flex-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-[#212121] ${
-              selected ? 'text-[#191919]' : 'text-[#cfcfcf] hover:text-white'
+            aria-hidden
+            className={`relative z-10 flex flex-1 items-center justify-center rounded-full px-1 text-[10px] font-medium leading-none transition-colors ${
+              selected ? 'text-[#181818]' : 'text-[#8f8f93] hover:text-[#cfcfd2]'
             }`}
           >
             {option.label}
-          </button>
+          </span>
         )
       })}
-    </div>
+    </button>
   )
 }
 
